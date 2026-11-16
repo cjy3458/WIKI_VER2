@@ -1,117 +1,108 @@
 'use client';
 
 import Image from 'next/image';
-import { AVATAR_COLORS, NAME_MAX, useNet } from '@/lib/net';
-import { archivedAt, people } from '@/lib/people';
+import { useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useGame } from '@/lib/store';
 
-const lastEdit = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' }).format(
-  new Date(archivedAt),
-);
+const ZOOM_MS = 950;
 
+/** 구버전 첫 화면처럼 여기저기 떠다니는 하트와 사자 */
+const FLOATERS = [
+  { src: '/img/heart.png', left: '12%', top: '14%', size: 38, delay: 0 },
+  { src: '/img/redlion.png', left: '35%', top: '9%', size: 36, delay: 1.1 },
+  { src: '/img/minilion.png', left: '15%', top: '31%', size: 34, delay: 0.5 },
+  { src: '/img/heart.png', left: '7%', top: '57%', size: 38, delay: 1.6 },
+  { src: '/img/minilion.png', left: '31%', top: '50%', size: 34, delay: 2.2 },
+  { src: '/img/crylion.png', left: '17%', top: '89%', size: 34, delay: 0.8 },
+  { src: '/img/minilion.png', left: '95%', top: '30%', size: 36, delay: 1.9 },
+  { src: '/img/heart.png', left: '93%', top: '62%', size: 38, delay: 0.3 },
+  { src: '/img/heart.png', left: '88%', top: '92%', size: 36, delay: 1.3 },
+];
+
+/**
+ * 구버전 위키의 첫 화면. 창 그림을 누르면 그 창 속으로 빨려 들어가며 바로 마을에 들어선다.
+ * 닉네임 같은 설정은 묻지 않는다(들어간 뒤 왼쪽 위 접속자 목록에서 바꿀 수 있다).
+ */
 export function IntroScreen({ canWalk }: { canWalk: boolean }) {
   const enter = useGame((s) => s.enter);
   const setDirectory = useGame((s) => s.setDirectory);
-  const profile = useNet((s) => s.profile);
-  const setProfile = useNet((s) => s.setProfile);
+  const windowRef = useRef<HTMLButtonElement>(null);
+  const [zoom, setZoom] = useState<CSSProperties | null>(null);
+
+  const dive = () => {
+    if (zoom) return;
+    const go = () => {
+      enter();
+      if (!canWalk) setDirectory(true);
+    };
+    const el = windowRef.current;
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      go();
+      return;
+    }
+    // 창 그림의 하늘 한가운데를 향해, 하늘이 화면을 다 덮을 때까지 키운다
+    const rect = el.getBoundingClientRect();
+    const scale = Math.max(window.innerWidth / rect.width, window.innerHeight / rect.height) * 3.2;
+    const originX = rect.left + rect.width * 0.45;
+    const originY = rect.top + rect.height * 0.4;
+    setZoom({
+      transformOrigin: `${originX}px ${originY}px`,
+      transform: `translate(${window.innerWidth / 2 - originX}px, ${window.innerHeight / 2 - originY}px) scale(${scale})`,
+    });
+    window.setTimeout(go, ZOOM_MS);
+  };
 
   return (
-    <div className="fixed inset-0 z-30 grid place-items-center overflow-y-auto bg-brand/40 p-4">
-      <section className="panel w-full max-w-lg text-center">
-        <div className="window-bar">LIKELION.EXE</div>
-        <div className="p-5 sm:p-7">
-        <Image
-          src="/img/lion.png"
-          alt="멋쟁이사자처럼 사자 마스코트"
-          width={308}
-          height={392}
-          priority
-          className="pixelated mx-auto h-20 w-auto animate-bob"
-        />
-        <p className="mt-4 font-display text-sm tracking-wide text-brand">CAU LIKE_LION</p>
-        <h1 className="mt-1 font-display text-4xl leading-tight sm:text-5xl">WIKI 픽셀 마을</h1>
-        <p className="mt-4 text-pretty leading-relaxed text-ink/80">
-          서버는 내려갔지만 글은 남았어요.
-          <br />
-          마을을 돌아다니다 이름표가 붙은 사자를 만나면 말을 걸어 보세요. 그 사람에 대해 우리가 써 둔 위키 글을 보여
-          줍니다. 지금 접속해 있는 다른 사람들도 만나서 채팅할 수 있어요.
-        </p>
+    <div className="desktop fixed inset-0 z-30 overflow-hidden" data-zooming={zoom ? '' : undefined}>
+      <div className="flex h-full flex-col transition-transform ease-in" style={{ transitionDuration: `${ZOOM_MS}ms`, ...zoom }}>
+        <header className="landing-fade flex h-16 shrink-0 items-center bg-white px-5 sm:h-20 sm:px-14">
+          <Image
+            src="/img/logo.png"
+            alt="멋쟁이사자처럼 중앙대학교"
+            width={382}
+            height={96}
+            priority
+            className="pixelated h-9 w-auto sm:h-11"
+          />
+        </header>
 
-        <dl className="mt-5 grid grid-cols-3 gap-2 text-sm">
-          {[
-            ['주민', `${people.length}명`],
-            ['기수', '11기 · 12기'],
-            ['마지막 글', lastEdit],
-          ].map(([label, value]) => (
-            <div key={label} className="border-2 border-ink bg-white px-2 py-2">
-              <dt className="text-ink/60">{label}</dt>
-              <dd className="font-bold">{value}</dd>
-            </div>
-          ))}
-        </dl>
-
-        <fieldset className="mt-5 border-[3px] border-ink bg-white p-3 text-left">
-          <legend className="px-1 text-sm font-bold">내 캐릭터</legend>
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              value={profile.name}
-              onChange={(e) => setProfile({ name: e.target.value.slice(0, NAME_MAX) })}
-              maxLength={NAME_MAX}
-              placeholder="닉네임"
-              aria-label="닉네임"
-              autoComplete="off"
-              className="min-w-0 flex-1 border-[3px] border-ink bg-white px-3 py-1.5 outline-none focus:ring-4 focus:ring-brand/30"
+        <main className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-6 py-6 lg:flex-row lg:justify-evenly lg:gap-[6%] lg:px-[8%]">
+          {FLOATERS.map((f, i) => (
+            <Image
+              key={i}
+              src={f.src}
+              alt=""
+              width={f.size}
+              height={f.size}
+              className="landing-fade pixelated pointer-events-none absolute hidden animate-float sm:block"
+              style={{ left: f.left, top: f.top, width: f.size, height: 'auto', animationDelay: `${f.delay}s` }}
             />
-            <div className="flex gap-1.5" role="radiogroup" aria-label="옷 색">
-              {AVATAR_COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  role="radio"
-                  aria-checked={profile.color === color}
-                  aria-label={`옷 색 ${color}`}
-                  onClick={() => setProfile({ color })}
-                  className="size-7 border-[3px] border-ink aria-checked:outline-4 aria-checked:outline-offset-2 aria-checked:outline-brand"
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-ink/60">
-            다른 접속자와는 서버 없이 브라우저끼리 직접 연결돼요. 채팅은 어디에도 저장되지 않습니다.
-          </p>
-        </fieldset>
+          ))}
 
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          {canWalk && (
-            <button type="button" autoFocus className="btn flex-1 bg-brand px-5 py-3 text-lg text-white" onClick={enter}>
-              마을 들어가기
+          <h1 className="landing-fade w-[38%] max-w-[230px] shrink-0 lg:w-[24%] lg:max-w-[430px]">
+            <Image src="/img/landingTitle.png" alt="CAU LIKE_LION WIKI" width={535} height={742} priority className="h-auto w-full" />
+          </h1>
+
+          <div className="relative w-[88%] max-w-[760px] lg:w-[48%]">
+            <button
+              ref={windowRef}
+              type="button"
+              autoFocus
+              onClick={dive}
+              aria-label="창 속 픽셀 마을로 들어가기"
+              className="landing-window block w-full cursor-pointer"
+            >
+              <Image src="/img/landingGame.png" alt="" width={1238} height={966} priority className="pixelated h-auto w-full" />
             </button>
-          )}
-          <button
-            type="button"
-            className="btn flex-1 px-5 py-3 text-lg"
-            onClick={() => {
-              enter();
-              setDirectory(true);
-            }}
-          >
-            이름으로 바로 찾기
-          </button>
-        </div>
-
-        <p className="mt-5 text-sm text-ink/60">
-          <span className="pointer-coarse:hidden">
-<kbd>←</kbd>
-            <kbd>↑</kbd>
-            <kbd>↓</kbd>
-            <kbd>→</kbd> 이동 · <kbd>Space</kbd> 말 걸기 · <kbd>Enter</kbd> 채팅 · 마우스 드래그로 둘러보기
-          </span>
-          <span className="hidden pointer-coarse:inline">왼쪽 아래 조이스틱으로 이동 · 화면을 밀어 둘러보기</span>
-        </p>
-        <p className="mt-2 text-xs text-ink/50">11기·12기 사람들의 문서만 보존한 읽기 전용 아카이브입니다.</p>
-        </div>
-      </section>
+            <span className="landing-fade click-badge pointer-events-none absolute -top-5 right-2 sm:-right-6 sm:-top-7" aria-hidden>
+              CLICK!
+            </span>
+          </div>
+        </main>
+      </div>
+      {/* 다 들어가면 화면이 하늘색으로 덮이고, 마을 쪽에서 같은 색이 걷힌다 */}
+      <div className="landing-sky pointer-events-none absolute inset-0" style={{ transitionDuration: `${ZOOM_MS}ms` }} />
     </div>
   );
 }

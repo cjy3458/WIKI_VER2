@@ -50,9 +50,95 @@ body {
 .desktop {
   background-color: var(--color-sky);
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.3) 2px, transparent 2px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.3) 2px, transparent 2px);
-  background-size: 48px 48px;
+    linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px);
+  background-size: 100px 100px;
+  background-position: -1px -1px;
+}
+
+/* ── 첫 화면: 창 속으로 빨려 들어가는 연출 ── */
+
+.landing-window {
+  transition: transform 0.15s;
+}
+.landing-window:hover,
+.landing-window:focus-visible {
+  transform: translate(-3px, -3px) scale(1.012);
+  outline: none;
+}
+.landing-fade,
+.landing-sky {
+  transition: opacity 0.35s;
+}
+/* 들어가는 동안 창 말고는 사라지고, 끝에는 창 속 하늘색이 화면을 덮는다 */
+[data-zooming] .landing-fade {
+  opacity: 0;
+}
+.landing-sky {
+  background: #b0ecff;
+  opacity: 0;
+  transition-property: opacity;
+  transition-timing-function: cubic-bezier(0.7, 0, 1, 1);
+}
+[data-zooming] .landing-sky {
+  opacity: 1;
+}
+/* 마을에 도착하면 같은 하늘색이 걷히며 섬이 드러난다 */
+.arrive-sky {
+  background: #b0ecff;
+  animation: arrive 0.9s ease-out forwards;
+}
+@keyframes arrive {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.click-badge {
+  border: 3px solid #000;
+  background: var(--color-lion);
+  padding: 0.15rem 0.7rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 2.4vw, 1.9rem);
+  box-shadow: 4px 4px 0 #000;
+  animation: click-hop 0.9s steps(2, jump-none) infinite;
+}
+/* 창을 가리키는 꼬리 */
+.click-badge::after {
+  content: '';
+  position: absolute;
+  left: 22%;
+  top: 100%;
+  border: 9px solid transparent;
+  border-top-color: #000;
+  border-right-width: 0;
+}
+@keyframes click-hop {
+  from {
+    transform: rotate(6deg) translateY(0);
+  }
+  to {
+    transform: rotate(6deg) translateY(-9px);
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(8deg);
+  }
+}
+.animate-float {
+  animation: float 3.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .click-badge,
+  .animate-float {
+    animation: none;
+  }
 }
 
 /* 유틸리티(hidden, shadow-*)가 이길 수 있도록 components 레이어에 둔다 */

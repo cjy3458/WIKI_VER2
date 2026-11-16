@@ -129,7 +129,14 @@ export function Game() {
           이 브라우저에서는 3D 마을을 그릴 수 없어요. 대신 <b>주민 명부</b>에서 글을 읽을 수 있어요.
         </p>
       )}
-      {phase === 'intro' ? <IntroScreen canWalk={webgl} /> : <Hud />}
+      {phase === 'intro' ? (
+        <IntroScreen canWalk={webgl} />
+      ) : (
+        <>
+          <div className="arrive-sky pointer-events-none fixed inset-0 z-30" aria-hidden />
+          <Hud />
+        </>
+      )}
       <Directory />
       <DocPanel />
       <Lightbox />

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { ChatBox } from '@/components/ui/ChatBox';
-import { remotes, useNet } from '@/lib/net';
+import { AVATAR_COLORS, NAME_MAX, remotes, useNet } from '@/lib/net';
 import { PART_COLOR, getPerson, people, roleLine } from '@/lib/people';
 import { controls, player, useGame } from '@/lib/store';
 import { activateSpot } from '@/components/Game';
@@ -143,7 +143,8 @@ function Online() {
   const status = useNet((s) => s.status);
   const peers = useNet((s) => s.peers);
   const muted = useNet((s) => s.muted);
-  const myName = useNet((s) => s.profile.name);
+  const profile = useNet((s) => s.profile);
+  const setProfile = useNet((s) => s.setProfile);
   const toggleMute = useNet((s) => s.toggleMute);
 
   const label =
@@ -154,11 +155,39 @@ function Online() {
       <summary className="flex cursor-pointer list-none items-center gap-1.5 font-bold">
         <i className={`size-2 ${status === 'online' ? 'bg-[#2fbf87]' : 'bg-ink/30'}`} />
         {label}
+        <span className="font-normal text-ink/50">· 닉네임 바꾸기</span>
         <span className="text-ink/40 group-open:rotate-180">▾</span>
       </summary>
       <ul className="mt-1.5 max-h-40 space-y-1 overflow-y-auto border-t-2 border-ink/10 pt-1.5">
-        <li className="truncate">
-          {myName || '나'} <span className="text-ink/50">(나)</span>
+        <li>
+          <label className="flex items-center gap-1.5">
+            <span className="shrink-0 text-ink/50">나</span>
+            <input
+              value={profile.name}
+              onChange={(e) => setProfile({ name: e.target.value.slice(0, NAME_MAX) })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur();
+              }}
+              maxLength={NAME_MAX}
+              autoComplete="off"
+              aria-label="내 닉네임"
+              className="w-32 min-w-0 border-2 border-ink bg-white px-1.5 py-0.5 outline-none focus:border-brand"
+            />
+          </label>
+          <div className="mt-1.5 flex gap-1" role="radiogroup" aria-label="옷 색">
+            {AVATAR_COLORS.map((color) => (
+              <button
+                key={color}
+                type="button"
+                role="radio"
+                aria-checked={profile.color === color}
+                aria-label={`옷 색 ${color}`}
+                onClick={() => setProfile({ color })}
+                className="size-5 border-2 border-ink aria-checked:outline-2 aria-checked:outline-offset-1 aria-checked:outline-brand"
+                style={{ backgroundColor: color }}
+              />
+            ))}
+          </div>
         </li>
         {peers.map((p) => (
           <li key={p.id} className="flex items-center justify-between gap-2">
@@ -169,6 +198,11 @@ function Online() {
           </li>
         ))}
         {peers.length === 0 && status === 'online' && <li className="text-ink/50">아직 다른 사람이 없어요</li>}
+        <li className="text-[11px] leading-snug text-ink/50">
+          서버 없이 브라우저끼리 직접 연결돼요.
+          <br />
+          채팅은 저장되지 않습니다.
+        </li>
       </ul>
     </details>
   );

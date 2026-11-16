@@ -3,7 +3,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { cameraState, player } from '@/lib/store';
+import { DIVE_SECONDS, cameraState, player } from '@/lib/store';
 
 const lookAt = new THREE.Vector3();
 const desired = new THREE.Vector3();
@@ -65,7 +65,16 @@ export function CameraRig() {
   }, [gl]);
 
   useFrame((_, delta) => {
-    const { yaw, pitch, distance } = cameraState;
+    // 입장 연출: 섬 위 높은 곳에서 캐릭터 뒤로 내려온다 (끝으로 갈수록 느려진다)
+    let dive = 0;
+    if (cameraState.dive > 0) {
+      cameraState.dive = Math.max(0, cameraState.dive - delta);
+      dive = (cameraState.dive / DIVE_SECONDS) ** 3;
+      cameraState.snap = true;
+    }
+    const yaw = cameraState.yaw;
+    const pitch = cameraState.pitch + dive * 0.75;
+    const distance = cameraState.distance + dive * 150;
     const flat = Math.cos(pitch) * distance;
     desired.set(player.x + Math.sin(yaw) * flat, 1.4 + Math.sin(pitch) * distance, player.z + Math.cos(yaw) * flat);
     if (cameraState.snap) {
