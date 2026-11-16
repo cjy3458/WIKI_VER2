@@ -32,3 +32,5 @@ __MACOSX/
 # 도구가 만드는 로컬 상태
 .bkit/
 .playwright-mcp/
+docs/.bkit-memory.json
+docs/.pdca-status.json
