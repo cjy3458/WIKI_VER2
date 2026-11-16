@@ -212,14 +212,35 @@ body {
   .wiki-missing {
     border-bottom: 2px dotted color-mix(in srgb, var(--color-ink) 45%, transparent);
   }
-  .wiki img {
+  /* 본문 이미지는 누르면 크게 보인다. 원문 비율(20~30%)이 좁은 화면에서 너무 작아지지 않게 최소 폭을 둔다 */
+  .wiki-zoom {
     display: inline-block;
+    min-width: min(100%, 9.5rem);
     max-width: 100%;
-    height: auto;
     margin: 0.35rem 0;
+    padding: 0;
+    cursor: zoom-in;
     border: 2px solid var(--color-ink);
     border-radius: 0.75rem;
+    overflow: hidden;
     vertical-align: top;
+    transition:
+      transform 0.1s,
+      box-shadow 0.1s;
+  }
+  .wiki-zoom:hover,
+  .wiki-zoom:focus-visible {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 var(--color-ink);
+    outline: none;
+  }
+  .wiki-zoom:focus-visible {
+    border-color: var(--color-brand);
+  }
+  .wiki img {
+    display: block;
+    width: 100%;
+    height: auto;
   }
   .wiki blockquote {
     border-left: 5px solid var(--color-lion);

@@ -10,11 +10,14 @@ interface GameState {
   /** 글이 열려 있는 사람 */
   openId: number | null;
   directoryOpen: boolean;
+  /** 크게 보고 있는 본문 이미지 */
+  zoom: { src: string; alt: string } | null;
   enter: () => void;
   setNearby: (id: number | null) => void;
   open: (id: number) => void;
   close: () => void;
   setDirectory: (open: boolean) => void;
+  setZoom: (zoom: { src: string; alt: string } | null) => void;
   /** 그 주민 바로 앞으로 순간이동 */
   teleportTo: (id: number) => void;
 }
@@ -24,10 +27,12 @@ export const useGame = create<GameState>((set) => ({
   nearbyId: null,
   openId: null,
   directoryOpen: false,
+  zoom: null,
   enter: () => set({ phase: 'play' }),
   setNearby: (id) => set((s) => (s.nearbyId === id ? s : { nearbyId: id })),
-  open: (id) => set({ openId: id, directoryOpen: false }),
-  close: () => set({ openId: null }),
+  open: (id) => set({ openId: id, directoryOpen: false, zoom: null }),
+  close: () => set({ openId: null, zoom: null }),
+  setZoom: (zoom) => set({ zoom }),
   setDirectory: (open) => set({ directoryOpen: open }),
   teleportTo: (id) => {
     const npc = getNpc(id);
@@ -42,7 +47,7 @@ export const useGame = create<GameState>((set) => ({
     cameraState.pitch = 0.42;
     cameraState.distance = 13;
     cameraState.snap = true;
-    set({ phase: 'play', directoryOpen: false, openId: null, nearbyId: id });
+    set({ phase: 'play', directoryOpen: false, openId: null, zoom: null, nearbyId: id });
   },
 }));
 

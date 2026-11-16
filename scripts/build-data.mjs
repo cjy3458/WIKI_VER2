@@ -4,6 +4,7 @@
 //   npm run build:data -- "<원본 DB가 들어 있는 폴더(상위 폴더도 가능)>"
 //
 // 규칙은 .claude/rules/data-pipeline.md 참고. 계정/토큰 CSV는 읽지 않는다.
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -144,7 +145,25 @@ function readRoster(content) {
 
 // ───────────────────────── 본문 변환 ─────────────────────────
 
-const S3_IMAGE = /https?:\/\/likelionwiki-bucket\.s3[^\s)"'<>]+/g;
+// 위키 S3 버킷 이미지 + <img src="http…"> 로 걸린 외부 이미지. 둘 다 내려받아 보관한다
+const S3_IMAGE = /https?:\/\/likelionwiki-bucket\.s3[^\s)"'<>]+|(?<=<img\b[^>]*\bsrc=")https?:\/\/[^"]+/g;
+
+/**
+ * 마지막 수정본이 태그 중간에서 잘린 채 저장된 문서가 있다(원본 DB 자체가 그렇다).
+ * 같은 문서의 이전 버전에 그 태그가 온전히 있으면 잘린 꼬리만 이어 붙인다. 내용을 지어내지 않는다.
+ */
+function restoreTruncatedTail(content, olderVersions) {
+  const open = content.match(/<[a-zA-Z][^>]*$/);
+  if (!open) return { content, restored: false };
+  for (const older of olderVersions) {
+    const at = older.lastIndexOf(open[0]);
+    if (at < 0) continue;
+    const end = older.indexOf('>', at);
+    if (end < 0) continue;
+    return { content: content + older.slice(at + open[0].length, end + 1), restored: true };
+  }
+  return { content, restored: false };
+}
 
 function rewriteLinks(content) {
   return content.replace(WIKI_LINK, (_, encoded) => `#wiki/${encodeURIComponent(decodeTitle(encoded))}`);
@@ -161,7 +180,10 @@ function isEmptyDoc(content) {
 }
 
 async function fetchImage(url) {
-  const id = path.basename(new URL(url).pathname).replace(/\.[a-z0-9]+$/i, '');
+  // 위키 버킷 파일은 이름이 UUID 라 그대로 쓰고, 외부 이미지는 URL 해시로 이름을 만든다
+  const id = url.includes('likelionwiki-bucket')
+    ? path.basename(new URL(url).pathname).replace(/\.[a-z0-9]+$/i, '')
+    : `ext-${createHash('sha1').update(url).digest('hex').slice(0, 16)}`;
   const fileName = `${id}.webp`;
   const dest = path.join(OUT_IMG, fileName);
   if (existsSync(dest)) return { url, local: `/wiki-images/${fileName}`, cached: true };
@@ -216,7 +238,26 @@ async function main() {
   }
 
   const docByTitle = new Map(currDocs.map((d) => [norm(d.title), d]));
-  const bodyOf = (doc) => history.get(doc.history_doc_id)?.content ?? '';
+  const versionsByTitle = new Map();
+  for (const h of history.values()) {
+    const key = norm(h.title);
+    if (!versionsByTitle.has(key)) versionsByTitle.set(key, []);
+    versionsByTitle.get(key).push(h);
+  }
+  const restoredDocs = [];
+  const bodyCache = new Map();
+  const bodyOf = (doc) => {
+    if (bodyCache.has(doc.id)) return bodyCache.get(doc.id);
+    const raw = history.get(doc.history_doc_id)?.content ?? '';
+    const older = (versionsByTitle.get(norm(doc.title)) ?? [])
+      .filter((h) => Number(h.id) < Number(doc.history_doc_id))
+      .sort((a, b) => Number(b.id) - Number(a.id))
+      .map((h) => h.content);
+    const { content, restored } = restoreTruncatedTail(raw, older);
+    if (restored) restoredDocs.push(norm(doc.title));
+    bodyCache.set(doc.id, content);
+    return content;
+  };
   const warnings = [];
 
   // 1) 명단: 이름 → [{ gen, part, role }]
@@ -322,6 +363,8 @@ async function main() {
   console.log(`  빈 문서    ${people.filter((p) => p.isEmpty).length}명`);
   console.log(`  이미지     ${imageUrls.length}개 (새로 받음 ${downloaded}, 실패 ${imageUrls.length - imageMap.size}, 정리 ${pruned})`);
   console.log(`  본문 합계  ${people.reduce((n, p) => n + p.content.length, 0).toLocaleString()}자`);
+  const restoredPeople = restoredDocs.filter((name) => people.some((p) => p.name === name));
+  if (restoredPeople.length) console.log(`  잘린 끝부분을 이전 버전에서 복원: ${restoredPeople.join(', ')}`);
   const unknown = people.filter((p) => p.home === null || p.part === 'unknown').map((p) => p.name);
   if (unknown.length) console.log(`  기수/파트 미상: ${unknown.join(', ')}`);
   for (const w of warnings) console.warn(`  경고: ${w}`);

@@ -32,6 +32,8 @@ paths:
 - 본문 텍스트는 그대로 둔다. 바꾸는 것은 두 가지뿐:
   - `https://wiki.cau-likelion.org/viewer?title=…`, `kiwi-client.vercel.app/viewer?title=…` → `#wiki/<인코딩된 제목>` 내부 링크
   - S3(`likelionwiki-bucket`) 이미지 URL → `/wiki-images/<uuid>.webp` 로컬 경로
+- **잘린 꼬리 복원**: 마지막 수정본이 태그 중간에서 끊긴 채 저장된 문서가 있다(원본 DB가 그렇다. 예: 최재영 문서가 `style="width:`에서 끝남). 같은 문서의 이전 버전에 그 태그가 온전히 있으면 **끊긴 태그의 나머지 부분만** 이어 붙인다(`restoreTruncatedTail`). 그 이상은 복원하지 않는다.
+- `<img src="http…">`로 걸린 외부 이미지(postimg 등)도 내려받아 `ext-<해시>.webp`로 보관한다.
 - 이미지는 내려받아 `public/wiki-images/`에 둔다. 내려받기 실패 시 원래 URL을 유지하고 경고를 출력한다.
 - 출력은 `src/data/generated/people.json`. 스키마는 `src/types/wiki.ts`와 `.claude/skills/build-data/data-schema.md`를 함께 갱신한다.
 - 스크립트는 여러 번 돌려도 같은 결과가 나와야 한다(정렬 고정, 이미 받은 이미지는 건너뜀).

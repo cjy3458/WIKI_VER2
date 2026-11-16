@@ -6,6 +6,7 @@ import { Directory } from '@/components/ui/Directory';
 import { DocPanel } from '@/components/ui/DocPanel';
 import { Hud } from '@/components/ui/Hud';
 import { IntroScreen } from '@/components/ui/IntroScreen';
+import { Lightbox } from '@/components/ui/Lightbox';
 import { controls, isBlocked, resetControls, useGame } from '@/lib/store';
 
 const World = dynamic(() => import('@/components/world/World'), {
@@ -49,7 +50,8 @@ function useKeyboard() {
     const onKeyDown = (e: KeyboardEvent) => {
       const game = useGame.getState();
       if (e.code === 'Escape') {
-        if (game.openId !== null) game.close();
+        if (game.zoom !== null) game.setZoom(null);
+        else if (game.openId !== null) game.close();
         else if (game.directoryOpen) game.setDirectory(false);
         return;
       }
@@ -107,6 +109,7 @@ export function Game() {
       {phase === 'intro' ? <IntroScreen canWalk={webgl} /> : <Hud />}
       <Directory />
       <DocPanel />
+      <Lightbox />
     </main>
   );
 }

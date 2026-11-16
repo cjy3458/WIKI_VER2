@@ -53,6 +53,8 @@ src/lib/people.ts ──▶ src/lib/village.ts (배치 계산) ──▶ 3D 씬 
 `react-markdown` → `remark-gfm`, `remark-breaks`(원본 뷰어가 줄바꿈을 그대로 보여 줬다) → `rehype-raw` → 이미지 폭 보존 → `rehype-sanitize`.
 
 - 원문의 `<img style="width: 30%">`는 sanitize가 style을 지우므로, 그 전에 숫자만 `data-width`로 옮겨 살린다.
+- 들여쓰기·따옴표 오타로 `<img>`가 글자로 보이는 원문은 그리기 직전에만 보정한다(`repairMarkup`). 저장된 본문은 그대로다.
+- 이미지는 버튼으로 감싸 누르면 `Lightbox`로 화면 가득 보여 준다. `Esc`는 확대 → 글 → 주민 찾기 순으로 하나씩 닫는다.
 - `#wiki/<이름>` 링크는 아카이브에 그 사람이 있으면 그 글로 넘어가는 버튼, 없으면 점선 밑줄 텍스트.
 
 ## 3D를 못 쓰는 경우
