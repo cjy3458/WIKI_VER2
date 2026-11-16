@@ -15,13 +15,9 @@ const World = dynamic(() => import('@/components/world/World'), {
 });
 
 const MOVE_KEYS: Record<string, keyof typeof controls.keys> = {
-  KeyW: 'up',
   ArrowUp: 'up',
-  KeyS: 'down',
   ArrowDown: 'down',
-  KeyA: 'left',
   ArrowLeft: 'left',
-  KeyD: 'right',
   ArrowRight: 'right',
   ShiftLeft: 'run',
   ShiftRight: 'run',
@@ -69,9 +65,11 @@ function useKeyboard() {
         if (e.code.startsWith('Arrow') && !isBlocked()) e.preventDefault();
         return;
       }
-      if ((e.code === 'KeyE' || e.code === 'Space' || e.code === 'Enter') && !e.repeat && !isBlocked()) {
+      if (e.code === 'Space' && !e.repeat && !isBlocked()) {
         if (game.nearbyId !== null) {
           e.preventDefault();
+          // 포커스가 남아 있던 버튼이 스페이스바로 같이 눌리지 않게 한다
+          if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
           game.open(game.nearbyId);
         }
       }

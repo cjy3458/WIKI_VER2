@@ -65,10 +65,10 @@ export function IntroScreen({ canWalk }: { canWalk: boolean }) {
 
         <p className="mt-5 text-sm text-ink/60">
           <span className="pointer-coarse:hidden">
-            <kbd>W</kbd>
-            <kbd>A</kbd>
-            <kbd>S</kbd>
-            <kbd>D</kbd> 이동 · <kbd>E</kbd> 말 걸기 · 마우스 드래그로 둘러보기
+<kbd>←</kbd>
+            <kbd>↑</kbd>
+            <kbd>↓</kbd>
+            <kbd>→</kbd> 이동 · <kbd>Space</kbd> 말 걸기 · 마우스 드래그로 둘러보기
           </span>
           <span className="hidden pointer-coarse:inline">왼쪽 아래 조이스틱으로 이동 · 화면을 밀어 둘러보기</span>
         </p>

@@ -155,10 +155,10 @@ export function Hud() {
         <div className="flex flex-col gap-2">
           <Joystick />
           <p className="panel hidden rounded-xl px-3 py-2 text-sm shadow-[3px_3px_0_var(--color-ink)] pointer-fine:block">
-            <kbd>W</kbd>
-            <kbd>A</kbd>
-            <kbd>S</kbd>
-            <kbd>D</kbd> 이동 · <kbd>Shift</kbd> 달리기 · 드래그 시점 · 휠 줌
+<kbd>←</kbd>
+            <kbd>↑</kbd>
+            <kbd>↓</kbd>
+            <kbd>→</kbd> 이동 · <kbd>Space</kbd> 말 걸기 · <kbd>Shift</kbd> 달리기 · 드래그 시점 · 휠 줌
           </p>
         </div>
 
@@ -169,7 +169,7 @@ export function Hud() {
               className="btn pointer-events-auto animate-pop bg-brand px-5 py-3 text-lg text-white"
               onClick={() => open(nearby.id)}
             >
-              <kbd className="mr-2 hidden border-white/70 bg-white/15 text-white pointer-fine:inline">E</kbd>
+              <kbd className="mr-2 hidden border-white/70 bg-white/15 text-white pointer-fine:inline">Space</kbd>
               {nearby.name}
               <span className="ml-1.5 text-sm font-normal opacity-85">({roleLine(nearby)})</span>에게 말 걸기
             </button>
