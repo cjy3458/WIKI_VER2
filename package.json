@@ -21,6 +21,7 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "three": "^0.187.0",
+    "trystero": "^0.26.0",
     "zustand": "^5.1.0"
   },
   "devDependencies": {

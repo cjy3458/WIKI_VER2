@@ -6,6 +6,7 @@ import { Markers } from '@/components/world/Markers';
 import { Npcs } from '@/components/world/Npcs';
 import { Player } from '@/components/world/Player';
 import { Scenery } from '@/components/world/Scenery';
+import { Visitors } from '@/components/world/Visitors';
 
 const SKY = '#bfe6ff';
 
@@ -26,6 +27,7 @@ export default function World() {
       <Scenery />
       <Npcs />
       <Player />
+      <Visitors />
       <Markers />
     </Canvas>
   );

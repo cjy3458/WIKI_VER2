@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { dampAngle } from '@/components/world/geo';
 import { ARM_OFFSET, LEG_OFFSET, LIMB_PIVOT, createPlayerGeometries } from '@/components/world/lionGeometry';
+import { useNet } from '@/lib/net';
 import { cameraState, controls, isBlocked, player } from '@/lib/store';
 import { WORLD_RADIUS, village } from '@/lib/village';
 
@@ -28,6 +29,12 @@ export function Player() {
     }),
     [],
   );
+
+  // 옷 색은 입장할 때 고른 색
+  const shirtColor = useNet((s) => s.profile.color);
+  useEffect(() => {
+    assets.shirtMaterial.color.set(shirtColor);
+  }, [assets, shirtColor]);
 
   useEffect(
     () => () => {

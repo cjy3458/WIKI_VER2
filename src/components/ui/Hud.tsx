@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { ChatBox } from '@/components/ui/ChatBox';
+import { remotes, useNet } from '@/lib/net';
 import { PART_COLOR, getPerson, people, roleLine } from '@/lib/people';
 import { controls, player, useGame } from '@/lib/store';
 import { PLAZA_RADIUS, WORLD_RADIUS, village } from '@/lib/village';
@@ -56,6 +58,18 @@ function Minimap() {
         ctx.lineWidth = 1;
         ctx.strokeStyle = '#2a2140';
         ctx.stroke();
+      }
+
+      // 함께 접속한 사람들: 흰 테두리 네모
+      const { peers, muted } = useNet.getState();
+      for (const peer of peers) {
+        const remote = remotes.get(peer.id);
+        if (!remote || muted.includes(peer.id)) continue;
+        ctx.fillStyle = '#2a2140';
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(at(remote.x) - 3.5, at(remote.z) - 3.5, 7, 7);
+        ctx.strokeRect(at(remote.x) - 3.5, at(remote.z) - 3.5, 7, 7);
       }
 
       // 플레이어: 바라보는 방향의 화살표
@@ -131,6 +145,42 @@ function Joystick() {
   );
 }
 
+/** 지금 함께 접속해 있는 사람 수와 목록 */
+function Online() {
+  const status = useNet((s) => s.status);
+  const peers = useNet((s) => s.peers);
+  const muted = useNet((s) => s.muted);
+  const myName = useNet((s) => s.profile.name);
+  const toggleMute = useNet((s) => s.toggleMute);
+
+  const label =
+    status === 'failed' ? '연결 안 됨 · 혼자 접속 중' : status === 'online' ? `지금 ${peers.length + 1}명 접속 중` : '연결하는 중…';
+
+  return (
+    <details className="group mt-1 text-xs sm:text-sm">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 font-bold">
+        <i className={`size-2 rounded-full ${status === 'online' ? 'bg-[#2fbf87]' : 'bg-ink/30'}`} />
+        {label}
+        <span className="text-ink/40 group-open:rotate-180">▾</span>
+      </summary>
+      <ul className="mt-1.5 max-h-40 space-y-1 overflow-y-auto border-t-2 border-ink/10 pt-1.5">
+        <li className="truncate">
+          {myName || '나'} <span className="text-ink/50">(나)</span>
+        </li>
+        {peers.map((p) => (
+          <li key={p.id} className="flex items-center justify-between gap-2">
+            <span className={`truncate ${muted.includes(p.id) ? 'text-ink/40 line-through' : ''}`}>{p.name}</span>
+            <button type="button" className="shrink-0 underline" onClick={() => toggleMute(p.id)}>
+              {muted.includes(p.id) ? '다시 보기' : '숨기기'}
+            </button>
+          </li>
+        ))}
+        {peers.length === 0 && status === 'online' && <li className="text-ink/50">아직 다른 사람이 없어요</li>}
+      </ul>
+    </details>
+  );
+}
+
 export function Hud() {
   const nearby = useGame((s) => getPerson(s.nearbyId));
   const open = useGame((s) => s.open);
@@ -142,6 +192,7 @@ export function Hud() {
         <div className="panel pointer-events-auto rounded-2xl px-3 py-2 shadow-[3px_3px_0_var(--color-ink)]">
           <p className="font-display text-lg leading-tight sm:text-xl">멋사 중앙대 위키 마을</p>
           <p className="text-xs text-ink/70 sm:text-sm">주민 {people.length}명 · 읽기 전용 아카이브</p>
+          <Online />
         </div>
         <div className="flex flex-col items-end gap-3">
           <button type="button" className="btn pointer-events-auto bg-lion px-3 py-2" onClick={() => setDirectory(true)}>
@@ -153,12 +204,13 @@ export function Hud() {
 
       <div className="flex items-end justify-between gap-3">
         <div className="flex flex-col gap-2">
+          <ChatBox />
           <Joystick />
           <p className="panel hidden rounded-xl px-3 py-2 text-sm shadow-[3px_3px_0_var(--color-ink)] pointer-fine:block">
-<kbd>←</kbd>
+            <kbd>←</kbd>
             <kbd>↑</kbd>
             <kbd>↓</kbd>
-            <kbd>→</kbd> 이동 · <kbd>Space</kbd> 말 걸기 · <kbd>Shift</kbd> 달리기 · 드래그 시점 · 휠 줌
+            <kbd>→</kbd> 이동 · <kbd>Space</kbd> 말 걸기 · <kbd>Enter</kbd> 채팅 · <kbd>Shift</kbd> 달리기
           </p>
         </div>
 

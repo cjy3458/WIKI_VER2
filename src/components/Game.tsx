@@ -2,11 +2,13 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useSyncExternalStore } from 'react';
+import { CHAT_INPUT_ID } from '@/components/ui/ChatBox';
 import { Directory } from '@/components/ui/Directory';
 import { DocPanel } from '@/components/ui/DocPanel';
 import { Hud } from '@/components/ui/Hud';
 import { IntroScreen } from '@/components/ui/IntroScreen';
 import { Lightbox } from '@/components/ui/Lightbox';
+import { useNet } from '@/lib/net';
 import { controls, isBlocked, resetControls, useGame } from '@/lib/store';
 
 const World = dynamic(() => import('@/components/world/World'), {
@@ -65,6 +67,12 @@ function useKeyboard() {
         if (e.code.startsWith('Arrow') && !isBlocked()) e.preventDefault();
         return;
       }
+      if (e.code === 'Enter' && !isBlocked()) {
+        // Enter → 채팅 입력창으로
+        e.preventDefault();
+        document.getElementById(CHAT_INPUT_ID)?.focus();
+        return;
+      }
       if (e.code === 'Space' && !e.repeat && !isBlocked()) {
         if (game.nearbyId !== null) {
           e.preventDefault();
@@ -94,6 +102,12 @@ export function Game() {
   const phase = useGame((s) => s.phase);
   const webgl = useSyncExternalStore(subscribeNever, hasWebgl, () => true);
   useKeyboard();
+
+  // 저장해 둔 닉네임·옷 색 불러오기, 마을에 들어가면 다른 접속자와 연결
+  useEffect(() => useNet.getState().loadProfile(), []);
+  useEffect(() => {
+    if (phase === 'play') void useNet.getState().connect();
+  }, [phase]);
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-sky">

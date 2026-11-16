@@ -10,13 +10,15 @@
 - 검색/클릭으로 글을 찾던 방식 대신, **3D 마을을 캐릭터로 돌아다니며 이름표가 붙은 동아리 사람(NPC)에게 말을 걸면 그 사람의 글이 열리는** 방식이다.
 - 대상은 **11기·12기 사람 문서만**: 원본 DB에서 "11기" 또는 "12기" 태그가 붙어 있고, 인물 표에 11기 또는 12기 아기사자로 올라 있는 사람. 프로젝트/소모임/기수 문서, 9·10·13·14기 사람은 넣지 않는다.
 - 마을은 기수별로 나누지 않는다(두 태그를 다 가진 사람이 많다). 주민은 한 마을에 흩어져 있고, 이름으로 찾아 그 사람 앞으로 바로 이동할 수 있다.
-- 편집·로그인·역사·역링크 기능은 없다. 만들지 않는다.
+- **함께 접속(메타버스)**: 지금 접속해 있는 다른 사람들이 아바타로 보이고 채팅할 수 있다. 서버 없이 브라우저끼리 직접 연결하는 P2P(`trystero`)이며 채팅은 저장하지 않는다. 설계는 `docs/multiplayer.md`.
+- 편집·로그인·역사·역링크 기능은 없다. 만들지 않는다. 접속자는 위키 글을 바꿀 수 없다.
 
 ## 기술 스택
 
 - Next.js 16 (App Router, `src/` 디렉터리) + React 19 + TypeScript
 - 3D: `three`, `@react-three/fiber`, `@react-three/drei` — 물리엔진 없이 자체 충돌 처리
 - 상태: `zustand` / 스타일: Tailwind CSS v4
+- 실시간: `trystero` (WebRTC P2P, 공개 Nostr 릴레이로 서로를 찾음) — 우리 서버·API 키 없음
 - 본문 렌더링: `react-markdown` + `remark-gfm` + `rehype-raw` + `rehype-sanitize`
 - 패키지 매니저: npm
 
@@ -39,7 +41,9 @@ src/app/                    라우트
 src/components/world/       3D 씬 (맵, 플레이어, NPC, 카메라)
 src/components/ui/          HUD, 대화창, 문서 뷰어, 주민 명부
 src/lib/                    스토어, 마을 배치 계산, 유틸
+src/lib/net.ts              다른 접속자와의 P2P 통신 (통신 코드는 여기에만)
 docs/design.md              설계 문서
+docs/multiplayer.md         함께 접속(메타버스) 설계
 ```
 
 ## 반드시 지킬 것
