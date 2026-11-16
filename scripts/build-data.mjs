@@ -4,7 +4,7 @@
 //   npm run build:data -- "<원본 DB가 들어 있는 폴더(상위 폴더도 가능)>"
 //
 // 규칙은 .claude/rules/data-pipeline.md 참고. 계정/토큰 CSV는 읽지 않는다.
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -205,10 +205,12 @@ async function main() {
   const load = (name) => parseCsv(readFileSync(path.join(dbDir, `${name}.csv`), 'utf8').replace(/^﻿/, ''));
   const currDocs = load('documents_currdoc');
   const history = new Map(load('documents_historydoc').map((h) => [h.id, h]));
-  const tagsByDoc = new Map();
+  // 주의: documents_generation.title_id 는 문서(currdoc)가 아니라 수정 이력(historydoc)의 id 다.
+  // 태그는 버전마다 붙으므로, 문서의 현재 태그 = 최신 버전(history_doc_id)에 붙은 태그.
+  const tagsByVersion = new Map();
   for (const g of load('documents_generation')) {
-    if (!tagsByDoc.has(g.title_id)) tagsByDoc.set(g.title_id, new Set());
-    tagsByDoc.get(g.title_id).add(norm(g.generation));
+    if (!tagsByVersion.has(g.title_id)) tagsByVersion.set(g.title_id, new Set());
+    tagsByVersion.get(g.title_id).add(norm(g.generation));
   }
 
   const docByTitle = new Map(currDocs.map((d) => [norm(d.title), d]));
@@ -238,7 +240,7 @@ async function main() {
       warnings.push(`명단에 있지만 문서가 없음: ${name}`);
       continue;
     }
-    const tags = [...(tagsByDoc.get(doc.id) ?? [])];
+    const tags = [...(tagsByVersion.get(doc.history_doc_id) ?? [])];
     if (!tags.some((t) => TARGET_TAGS.includes(t))) continue;
     selected.push({ doc, name, tags, appearances });
   }
@@ -258,6 +260,16 @@ async function main() {
       warnings.push(`이미지 내려받기 실패(원본 URL 유지): ${url} — ${error.message}`);
     }
   });
+
+  // 더 이상 어떤 글에서도 쓰지 않는 이미지는 지운다
+  const inUse = new Set([...imageMap.values()].map((local) => path.basename(local)));
+  let pruned = 0;
+  for (const file of readdirSync(OUT_IMG)) {
+    if (!inUse.has(file)) {
+      rmSync(path.join(OUT_IMG, file));
+      pruned++;
+    }
+  }
 
   // 4) 출력
   const genNumber = (tag) => Number.parseInt(tag, 10);
@@ -305,7 +317,7 @@ async function main() {
   console.log(`  소속 기수  ${count((p) => (p.home ? `${p.home}기` : '미상'))}`);
   console.log(`  파트       ${count((p) => p.part)}`);
   console.log(`  빈 문서    ${people.filter((p) => p.isEmpty).length}명`);
-  console.log(`  이미지     ${imageUrls.length}개 (새로 받음 ${downloaded}, 실패 ${imageUrls.length - imageMap.size})`);
+  console.log(`  이미지     ${imageUrls.length}개 (새로 받음 ${downloaded}, 실패 ${imageUrls.length - imageMap.size}, 정리 ${pruned})`);
   console.log(`  본문 합계  ${people.reduce((n, p) => n + p.content.length, 0).toLocaleString()}자`);
   const unknown = people.filter((p) => p.home === null || p.part === 'unknown').map((p) => p.name);
   if (unknown.length) console.log(`  기수/파트 미상: ${unknown.join(', ')}`);

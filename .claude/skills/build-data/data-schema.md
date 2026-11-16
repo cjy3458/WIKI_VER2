@@ -11,7 +11,7 @@ interface WikiData {
 interface Person {
   id: number;                 // documents_currdoc.id
   name: string;               // 문서 제목 = 사람 이름 (NFC 정규화)
-  tags: string[];             // DB 기수 태그, 예: ["11기", "12기"] (오름차순)
+  tags: string[];             // 최신 버전에 붙은 기수 태그 = 활동한 기수들, 예: ["11기", "12기"] (오름차순)
   home: number | null;        // 마을 배치용 소속 기수 (명단 표에서 "아기사자"로 처음 등장한 기수)
   part: Part;                 // 'plan' | 'design' | 'pd'(기획·디자인) | 'frontend' | 'backend' | 'unknown'
   staffOf: number[];          // 운영진으로 활동한 기수들
