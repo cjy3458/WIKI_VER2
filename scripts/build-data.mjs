@@ -15,6 +15,8 @@ const OUT_IMG = path.join(ROOT, 'public/wiki-images');
 
 /** 아카이브 대상 기수 태그 */
 const TARGET_TAGS = ['11기', '12기'];
+/** 아카이브 대상 소속 기수. 11기 운영진으로 태그만 붙은 9·10기는 넣지 않는다 */
+const TARGET_HOMES = [11, 12];
 /** 명단 표에는 없지만 사람 문서인 것. 값은 본문에 적힌 소속 (예: "12기 아기사자이다") */
 const EXTRA_PEOPLE = { 박기황: { gen: 12, part: 'unknown', role: 'member' } };
 /** 삭제 요청 등으로 빼야 하는 문서 제목 */
@@ -242,6 +244,8 @@ async function main() {
     }
     const tags = [...(tagsByVersion.get(doc.history_doc_id) ?? [])];
     if (!tags.some((t) => TARGET_TAGS.includes(t))) continue;
+    // 인물 표에서 11기 또는 12기 아기사자로 올라 있는 사람만
+    if (!appearances.some((a) => a.role === 'member' && TARGET_HOMES.includes(a.gen))) continue;
     selected.push({ doc, name, tags, appearances });
   }
   selected.sort((a, b) => Number(a.doc.id) - Number(b.doc.id));
@@ -276,9 +280,8 @@ async function main() {
   const people = selected.map(({ doc, name, tags, appearances }) => {
     const memberOf = appearances.filter((a) => a.role === 'member').sort((a, b) => a.gen - b.gen);
     const staffOf = appearances.filter((a) => a.role === 'staff').sort((a, b) => a.gen - b.gen);
-    const first = memberOf[0] ?? staffOf[0];
-    // 운영진으로만 등장하면 그 전 기수의 아기사자였다고 본다
-    const home = memberOf[0]?.gen ?? (staffOf[0] ? staffOf[0].gen - 1 : null);
+    const first = memberOf.find((a) => TARGET_HOMES.includes(a.gen));
+    const home = memberOf.find((a) => TARGET_HOMES.includes(a.gen))?.gen ?? null;
     const content = rewriteLinks(bodyOf(doc)).replace(S3_IMAGE, (url) => imageMap.get(url) ?? url);
     return {
       id: Number(doc.id),
@@ -313,7 +316,7 @@ async function main() {
       .sort(([a], [b]) => a.localeCompare(b, 'ko', { numeric: true }))
       .map(([k, v]) => `${k}: ${v}`)
       .join(', ');
-  console.log(`전체 문서 ${currDocs.length}개 중 사람 문서 ${people.length}명 선별 (태그: ${TARGET_TAGS.join(', ')})`);
+  console.log(`전체 문서 ${currDocs.length}개 중 사람 문서 ${people.length}명 선별 (태그: ${TARGET_TAGS.join(', ')} / 소속: ${TARGET_HOMES.map((g) => g + '기').join(', ')})`);
   console.log(`  소속 기수  ${count((p) => (p.home ? `${p.home}기` : '미상'))}`);
   console.log(`  파트       ${count((p) => p.part)}`);
   console.log(`  빈 문서    ${people.filter((p) => p.isEmpty).length}명`);

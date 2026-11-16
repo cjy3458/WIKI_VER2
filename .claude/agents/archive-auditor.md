@@ -14,7 +14,7 @@ model: sonnet
    - `*.csv`, `__MACOSX`가 추적되고 있지 않은가
    - `.gitignore`에 `.env*`, `CLAUDE.local.md`, `.claude/settings.local.json`이 있는가
 2. **선별 규칙** — `src/data/generated/people.json`:
-   - 모든 항목의 `tags`에 `11기` 또는 `12기`가 있는가
+   - 모든 항목의 `tags`에 `11기` 또는 `12기`가 있고, `home`이 11 또는 12인가
    - 사람이 아닌 문서(프로젝트명, `N기 …`, 소모임)가 섞이지 않았는가 — 이름 목록을 훑어 의심스러운 것을 나열
    - `id`·`name` 중복이 없는가
 3. **본문 무결성**:

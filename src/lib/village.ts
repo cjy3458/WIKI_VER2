@@ -1,7 +1,8 @@
-import { GEN_COLOR, PART_ORDER, homeOf, people } from '@/lib/people';
+import { people } from '@/lib/people';
 import type { Part } from '@/types/wiki';
 
 // 마을 배치는 전부 여기서 계산한다. 시드 고정 난수만 써서 언제 열어도 같은 자리에 같은 사람이 서 있다.
+// 기수별 구역은 없다. 11기·12기가 한 마을에 섞여 흩어져 있다.
 
 export interface Circle {
   x: number;
@@ -13,22 +14,10 @@ export interface Npc {
   id: number;
   name: string;
   part: Part;
-  home: number;
   x: number;
   z: number;
   /** 기본으로 바라보는 방향. 0이면 +z, 시계 반대 방향 라디안 */
   rot: number;
-}
-
-export interface District {
-  gen: number;
-  x: number;
-  z: number;
-  radius: number;
-  /** 광장에서 본 방향 (0 = 북쪽, 시계 방향) */
-  angle: number;
-  color: string;
-  count: number;
 }
 
 export interface House {
@@ -52,16 +41,16 @@ export interface Path {
   rot: number;
 }
 
-export const WORLD_RADIUS = 104;
-export const PLAZA_RADIUS = 12;
-export const SPAWN = { x: 0, z: 8, rot: Math.PI };
+export const WORLD_RADIUS = 80;
+export const PLAZA_RADIUS = 11;
+export const SPAWN = { x: 0, z: 7.5, rot: Math.PI };
 
-const DISTRICT_DISTANCE = 54;
-/** 광장 기준 각 기수 마을의 방위(도). 11·12기가 입장했을 때 정면 좌우에 오도록 */
-const DISTRICT_ANGLE: Record<number, number> = { 11: -36, 12: 36, 10: -104, 13: 104, 9: -158, 14: 158 };
-const RING_START = 6;
-const RING_GAP = 4.6;
-const NPC_SPACING = 4.4;
+/** 주민이 서 있는 범위 (광장 바깥 ~ 마을 가장자리) */
+const NPC_MIN_RADIUS = 13;
+const NPC_MAX_RADIUS = 60;
+const NPC_SPACING = 8;
+const PATH_END = 68;
+const ROOF_COLORS = ['#ff8a3d', '#2fbf87', '#39a9f5', '#ff5d8f', '#f2b21d', '#8f7dff'];
 
 function mulberry32(seed: number) {
   let a = seed >>> 0;
@@ -83,113 +72,100 @@ function distanceToSegment(px: number, pz: number, ax: number, az: number, bx: n
 
 function build() {
   const rand = mulberry32(20240106); // 위키 첫 문서가 만들어진 날
+  const far = (list: { x: number; z: number }[], x: number, z: number, min: number) =>
+    list.every((o) => Math.hypot(x - o.x, z - o.z) >= min);
 
-  // 1) 기수별로 묶기
-  const groups = new Map<number, typeof people>();
-  for (const person of people) {
-    const gen = homeOf(person);
-    if (!groups.has(gen)) groups.set(gen, []);
-    groups.get(gen)!.push(person);
-  }
-
-  const districts: District[] = [];
-  const npcs: Npc[] = [];
-  const houses: House[] = [];
-
-  for (const gen of [...groups.keys()].sort((a, b) => a - b)) {
-    const members = [...groups.get(gen)!].sort(
-      (a, b) => PART_ORDER.indexOf(a.part) - PART_ORDER.indexOf(b.part) || a.name.localeCompare(b.name, 'ko'),
-    );
-    const angle = ((DISTRICT_ANGLE[gen] ?? 0) * Math.PI) / 180;
-    const cx = Math.sin(angle) * DISTRICT_DISTANCE;
-    const cz = -Math.cos(angle) * DISTRICT_DISTANCE;
-    // 광장(원점)을 향하는 방향
-    const toPlaza = Math.atan2(-cx, -cz);
-
-    // 2) 동심원으로 세우기. 같은 파트끼리 이웃하게 된다
-    let placed = 0;
-    let ring = 0;
-    let lastRadius = RING_START;
-    while (placed < members.length) {
-      const radius = RING_START + RING_GAP * ring;
-      const capacity = Math.floor((2 * Math.PI * radius) / NPC_SPACING);
-      const count = Math.min(capacity, members.length - placed);
-      for (let i = 0; i < count; i++) {
-        const person = members[placed + i];
-        // 입구(광장 방향)가 두 사람 사이에 오도록 반 칸 민다
-        const a = toPlaza + ((i + 0.5) / count) * Math.PI * 2;
-        npcs.push({
-          id: person.id,
-          name: person.name,
-          part: person.part,
-          home: gen,
-          x: cx + Math.sin(a) * radius + (rand() - 0.5) * 0.5,
-          z: cz + Math.cos(a) * radius + (rand() - 0.5) * 0.5,
-          rot: toPlaza + (rand() - 0.5) * 0.9,
-        });
-      }
-      placed += count;
-      lastRadius = radius;
-      ring++;
-    }
-
-    const radius = lastRadius + 5;
-    districts.push({ gen, x: cx, z: cz, radius, angle, color: GEN_COLOR[gen] ?? '#888888', count: members.length });
-
-    // 3) 마을 둘레에 집. 입구 쪽은 비워 둔다
-    const houseRing = radius + 3.2;
-    const houseCount = Math.floor((2 * Math.PI * houseRing) / 9.5);
-    for (let i = 0; i < houseCount; i++) {
-      const offset = ((i + 0.5) / houseCount) * Math.PI * 2;
-      const fromEntrance = Math.min(offset, Math.PI * 2 - offset);
-      if (fromEntrance < 0.5) continue;
-      const a = toPlaza + offset;
-      houses.push({
-        x: cx + Math.sin(a) * houseRing,
-        z: cz + Math.cos(a) * houseRing,
-        rot: a + Math.PI,
-        scale: 0.9 + rand() * 0.35,
-        color: GEN_COLOR[gen] ?? '#888888',
-      });
-    }
-  }
-
-  // 4) 광장 → 마을 길
-  const paths: Path[] = districts.map((d) => {
-    const dist = Math.hypot(d.x, d.z);
-    const length = dist - d.radius - PLAZA_RADIUS + 3;
-    const mid = PLAZA_RADIUS - 1.5 + length / 2;
-    return { x: (d.x / dist) * mid, z: (d.z / dist) * mid, length, rot: Math.atan2(d.x, d.z) };
+  // 1) 광장에서 네 방향으로 뻗는 길
+  const roads = [0, 1, 2, 3].map((i) => {
+    const a = (i * Math.PI) / 2 + Math.PI / 4;
+    return { ax: Math.sin(a) * (PLAZA_RADIUS - 1), az: Math.cos(a) * (PLAZA_RADIUS - 1), bx: Math.sin(a) * PATH_END, bz: Math.cos(a) * PATH_END, a };
   });
+  const paths: Path[] = roads.map((r) => ({
+    x: (r.ax + r.bx) / 2,
+    z: (r.az + r.bz) / 2,
+    length: PATH_END - PLAZA_RADIUS + 1,
+    rot: r.a,
+  }));
+  const roadDistance = (x: number, z: number) => Math.min(...roads.map((r) => distanceToSegment(x, z, r.ax, r.az, r.bx, r.bz)));
 
-  // 5) 나무: 마을·광장·길을 피해 흩뿌린다
+  // 2) 주민: 기수·파트와 상관없이 마을 여기저기에 흩어 세운다
+  const npcs: Npc[] = [];
+  for (const person of [...people].sort((a, b) => a.id - b.id)) {
+    let spacing = NPC_SPACING;
+    for (let attempt = 0; ; attempt++) {
+      // 자리가 안 나면 간격을 조금씩 좁힌다
+      if (attempt > 0 && attempt % 200 === 0) spacing *= 0.9;
+      const r = Math.sqrt(NPC_MIN_RADIUS ** 2 + rand() * (NPC_MAX_RADIUS ** 2 - NPC_MIN_RADIUS ** 2));
+      const a = rand() * Math.PI * 2;
+      const x = Math.sin(a) * r;
+      const z = Math.cos(a) * r;
+      if (!far(npcs, x, z, spacing)) continue;
+      // 대체로 광장 쪽을 보되 제각각
+      npcs.push({ id: person.id, name: person.name, part: person.part, x, z, rot: Math.atan2(-x, -z) + (rand() - 0.5) * 2.4 });
+      break;
+    }
+  }
+
+  // 3) 집
+  const houses: House[] = [];
+  for (let attempt = 0; attempt < 3000 && houses.length < 30; attempt++) {
+    const r = 16 + Math.sqrt(rand()) * 56;
+    const a = rand() * Math.PI * 2;
+    const x = Math.sin(a) * r;
+    const z = Math.cos(a) * r;
+    if (!far(npcs, x, z, 6.5) || !far(houses, x, z, 11) || roadDistance(x, z) < 6) continue;
+    houses.push({
+      x,
+      z,
+      rot: Math.atan2(-x, -z) + (rand() - 0.5) * 1.2,
+      scale: 0.9 + rand() * 0.4,
+      color: ROOF_COLORS[houses.length % ROOF_COLORS.length],
+    });
+  }
+
+  // 4) 나무: 마을 안에는 드문드문, 바깥은 숲
   const trees: Tree[] = [];
-  for (let attempt = 0; attempt < 4000 && trees.length < 260; attempt++) {
-    const r = Math.sqrt(rand()) * (WORLD_RADIUS + 14);
+  for (let attempt = 0; attempt < 6000 && trees.length < 300; attempt++) {
+    const r = Math.sqrt(rand()) * (WORLD_RADIUS + 22);
     const a = rand() * Math.PI * 2;
     const x = Math.sin(a) * r;
     const z = Math.cos(a) * r;
     const scale = 0.8 + rand() * 0.9;
-    if (Math.hypot(x, z) < PLAZA_RADIUS + 3) continue;
-    if (districts.some((d) => Math.hypot(x - d.x, z - d.z) < d.radius + 8)) continue;
-    if (districts.some((d) => distanceToSegment(x, z, 0, 0, d.x, d.z) < 4.5)) continue;
-    if (trees.some((t) => Math.hypot(x - t.x, z - t.z) < 4.2)) continue;
+    const inside = r < NPC_MAX_RADIUS + 4;
+    if (r < PLAZA_RADIUS + 3) continue;
+    if (inside && rand() < 0.55) continue;
+    if (!far(npcs, x, z, 3.2) || !far(houses, x, z, 5) || !far(trees, x, z, inside ? 6 : 3.8)) continue;
+    if (roadDistance(x, z) < 3.6) continue;
     trees.push({ x, z, scale });
   }
 
-  // 6) 충돌체 (전부 원)
+  // 5) 충돌체 (전부 원)
   const colliders: Circle[] = [
     { x: 0, z: 0, r: 2.6 }, // 광장 동상
-    ...districts.map((d) => ({ x: d.x, z: d.z, r: 1.1 })), // 마을 깃대
     ...houses.map((h) => ({ x: h.x, z: h.z, r: 2.5 * h.scale })),
     ...trees.map((t) => ({ x: t.x, z: t.z, r: 0.55 * t.scale })),
     ...npcs.map((n) => ({ x: n.x, z: n.z, r: 0.6 })),
   ];
 
-  return { districts, npcs, houses, trees, paths, colliders };
+  return { npcs, houses, trees, paths, colliders };
 }
 
 export const village = build();
 
 const npcById = new Map(village.npcs.map((n) => [n.id, n]));
 export const getNpc = (id: number | null) => (id === null ? undefined : npcById.get(id));
+
+const STAND_DISTANCE = 2.4;
+
+/** 그 주민 바로 앞, 아무것도 없는 자리. 순간이동할 때 쓴다 */
+export function spotNear(npc: Npc) {
+  for (let k = 0; k < 8; k++) {
+    // 주민이 보고 있는 쪽부터 시계 방향으로 돌아가며 빈자리를 찾는다
+    const a = npc.rot + (k * Math.PI) / 4;
+    const x = npc.x + Math.sin(a) * STAND_DISTANCE;
+    const z = npc.z + Math.cos(a) * STAND_DISTANCE;
+    const blocked = village.colliders.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + 0.55);
+    if (!blocked && Math.hypot(x, z) < WORLD_RADIUS) return { x, z, rot: Math.atan2(npc.x - x, npc.z - z) };
+  }
+  return { x: npc.x, z: npc.z + STAND_DISTANCE, rot: Math.PI };
+}

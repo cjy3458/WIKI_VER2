@@ -16,7 +16,7 @@ description: 원본 위키 DB(CSV)에서 아카이브용 JSON과 이미지를 �
    npm run build:data -- "D:/dev/kiwi-client"
    ```
 4. 출력 요약을 읽는다. 확인할 것:
-   - 사람 수가 예상 범위인가 (기준: 2026-11 현재 74명)
+   - 사람 수가 예상 범위인가 (기준: 2026-11 현재 58명 — 11기 27, 12기 31)
    - `경고` 줄 — 명단에 있는데 문서가 없는 사람, 이미지 내려받기 실패
    - 소속 기수/파트를 못 찾은 사람(`unknown`) 목록
 5. `git diff --stat src/data/generated public/wiki-images`로 변화량이 의도와 맞는지 본다.

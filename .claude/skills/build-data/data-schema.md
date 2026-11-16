@@ -12,7 +12,7 @@ interface Person {
   id: number;                 // documents_currdoc.id
   name: string;               // 문서 제목 = 사람 이름 (NFC 정규화)
   tags: string[];             // 최신 버전에 붙은 기수 태그 = 활동한 기수들, 예: ["11기", "12기"] (오름차순)
-  home: number | null;        // 마을 배치용 소속 기수 (명단 표에서 "아기사자"로 처음 등장한 기수)
+  home: number | null;        // 소속 기수: 인물 표에 아기사자로 올라 있는 기수 (11 또는 12). 소개 문구용, 배치에는 안 쓴다
   part: Part;                 // 'plan' | 'design' | 'pd'(기획·디자인) | 'frontend' | 'backend' | 'unknown'
   staffOf: number[];          // 운영진으로 활동한 기수들
   updatedAt: string;          // 최신 본문 수정 시각 (ISO) — historydoc.updated_at 기준

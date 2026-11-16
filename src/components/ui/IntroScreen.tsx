@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import { archivedAt, people } from '@/lib/people';
 import { useGame } from '@/lib/store';
-import { village } from '@/lib/village';
 
 const lastEdit = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', timeZone: 'Asia/Seoul' }).format(
   new Date(archivedAt),
@@ -36,7 +35,7 @@ export function IntroScreen({ canWalk }: { canWalk: boolean }) {
         <dl className="mt-5 grid grid-cols-3 gap-2 text-sm">
           {[
             ['주민', `${people.length}명`],
-            ['마을', `${village.districts.length}곳`],
+            ['기수', '11기 · 12기'],
             ['마지막 글', lastEdit],
           ].map(([label, value]) => (
             <div key={label} className="rounded-xl border-2 border-ink/15 bg-white/70 px-2 py-2">
@@ -60,7 +59,7 @@ export function IntroScreen({ canWalk }: { canWalk: boolean }) {
               setDirectory(true);
             }}
           >
-            명부에서 바로 찾기
+            이름으로 바로 찾기
           </button>
         </div>
 
@@ -73,7 +72,7 @@ export function IntroScreen({ canWalk }: { canWalk: boolean }) {
           </span>
           <span className="hidden pointer-coarse:inline">왼쪽 아래 조이스틱으로 이동 · 화면을 밀어 둘러보기</span>
         </p>
-        <p className="mt-2 text-xs text-ink/50">11기·12기 태그가 붙은 사람 문서만 보존한 읽기 전용 아카이브입니다.</p>
+        <p className="mt-2 text-xs text-ink/50">11기·12기 사람들의 문서만 보존한 읽기 전용 아카이브입니다.</p>
       </section>
     </div>
   );

@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { GEN_COLOR, getPerson, people, roleLine } from '@/lib/people';
+import { PART_COLOR, getPerson, people, roleLine } from '@/lib/people';
 import { controls, player, useGame } from '@/lib/store';
-import { WORLD_RADIUS, getNpc, village } from '@/lib/village';
+import { PLAZA_RADIUS, WORLD_RADIUS, village } from '@/lib/village';
 
 const MAP_SIZE = 168;
 
@@ -32,34 +32,29 @@ function Minimap() {
 
       ctx.strokeStyle = '#e8d39c';
       ctx.lineWidth = 3;
-      for (const d of village.districts) {
+      ctx.lineCap = 'round';
+      for (const p of village.paths) {
+        const hx = (Math.sin(p.rot) * p.length) / 2;
+        const hz = (Math.cos(p.rot) * p.length) / 2;
         ctx.beginPath();
-        ctx.moveTo(at(0), at(0));
-        ctx.lineTo(at(d.x), at(d.z));
+        ctx.moveTo(at(p.x - hx), at(p.z - hz));
+        ctx.lineTo(at(p.x + hx), at(p.z + hz));
         ctx.stroke();
       }
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = 'bold 11px sans-serif';
-      for (const d of village.districts) {
-        ctx.beginPath();
-        ctx.arc(at(d.x), at(d.z), d.radius * scale, 0, Math.PI * 2);
-        ctx.fillStyle = GEN_COLOR[d.gen] ?? '#888';
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.fillText(`${d.gen}기`, at(d.x), at(d.z));
-      }
       ctx.beginPath();
-      ctx.arc(at(0), at(0), 5, 0, Math.PI * 2);
+      ctx.arc(at(0), at(0), PLAZA_RADIUS * scale, 0, Math.PI * 2);
       ctx.fillStyle = '#f2e2b1';
       ctx.fill();
 
-      const guide = getNpc(useGame.getState().guideId);
-      if (guide) {
+      // 주민: 파트 색 점. 지금 말 걸 수 있는 사람은 크게
+      const nearbyId = useGame.getState().nearbyId;
+      for (const npc of village.npcs) {
         ctx.beginPath();
-        ctx.arc(at(guide.x), at(guide.z), 5 + (Date.now() % 800) / 200, 0, Math.PI * 2);
-        ctx.strokeStyle = '#1f5fff';
-        ctx.lineWidth = 2.5;
+        ctx.arc(at(npc.x), at(npc.z), npc.id === nearbyId ? 4.5 : 2.6, 0, Math.PI * 2);
+        ctx.fillStyle = PART_COLOR[npc.part];
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#2a2140';
         ctx.stroke();
       }
 
@@ -138,7 +133,6 @@ function Joystick() {
 
 export function Hud() {
   const nearby = useGame((s) => getPerson(s.nearbyId));
-  const guide = useGame((s) => getPerson(s.guideId));
   const open = useGame((s) => s.open);
   const setDirectory = useGame((s) => s.setDirectory);
 
@@ -151,7 +145,7 @@ export function Hud() {
         </div>
         <div className="flex flex-col items-end gap-3">
           <button type="button" className="btn pointer-events-auto bg-lion px-3 py-2" onClick={() => setDirectory(true)}>
-            주민 명부 <kbd className="hidden sm:inline">Tab</kbd>
+            주민 찾기 <kbd className="hidden sm:inline">Tab</kbd>
           </button>
           <Minimap />
         </div>
@@ -169,14 +163,6 @@ export function Hud() {
         </div>
 
         <div className="flex min-h-14 flex-1 flex-col items-center justify-end gap-2" aria-live="polite">
-          {guide && (
-            <p className="panel pointer-events-auto rounded-full px-4 py-1.5 text-sm shadow-[3px_3px_0_var(--color-ink)]">
-              <b>{guide.name}</b>에게 가는 길 · 노란 빛기둥을 따라가세요{' '}
-              <button type="button" className="ml-1 underline" onClick={() => useGame.setState({ guideId: null })}>
-                그만두기
-              </button>
-            </p>
-          )}
           {nearby && (
             <button
               type="button"

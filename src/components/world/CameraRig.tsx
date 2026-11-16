@@ -12,7 +12,6 @@ const desired = new THREE.Vector3();
 export function CameraRig() {
   const { camera, gl } = useThree();
   const sun = useRef<THREE.DirectionalLight>(null);
-  const first = useRef(true);
 
   useEffect(() => {
     const el = gl.domElement;
@@ -69,9 +68,9 @@ export function CameraRig() {
     const { yaw, pitch, distance } = cameraState;
     const flat = Math.cos(pitch) * distance;
     desired.set(player.x + Math.sin(yaw) * flat, 1.4 + Math.sin(pitch) * distance, player.z + Math.cos(yaw) * flat);
-    if (first.current) {
+    if (cameraState.snap) {
       camera.position.copy(desired);
-      first.current = false;
+      cameraState.snap = false;
     } else {
       camera.position.lerp(desired, 1 - Math.exp(-10 * delta));
     }

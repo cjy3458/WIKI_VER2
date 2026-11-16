@@ -33,16 +33,6 @@ export const PART_COLOR: Record<Part, string> = {
   unknown: '#9aa3ad',
 };
 
-/** 마을(기수) 대표색 */
-export const GEN_COLOR: Record<number, string> = {
-  9: '#8f7dff',
-  10: '#39a9f5',
-  11: '#ff8a3d',
-  12: '#2fbf87',
-  13: '#ff5d8f',
-  14: '#f2b21d',
-};
-
 export const homeOf = (p: Person) => p.home ?? 12;
 
 /** "12기 백엔드" 같은 한 줄 소개. 데이터에 있는 사실만 쓴다 */

@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { box, createLabelTexture, displayFontFamily, mergeAll, paint } from '@/components/world/geo';
+import { box, mergeAll, paint } from '@/components/world/geo';
 import { LION, createNpcGeometries } from '@/components/world/lionGeometry';
 import { PLAZA_RADIUS, WORLD_RADIUS, village } from '@/lib/village';
-import type { District } from '@/lib/village';
 
 const dummy = new THREE.Object3D();
 const color = new THREE.Color();
@@ -117,55 +116,6 @@ function Buildings() {
   );
 }
 
-function DistrictArea({ district, fontFamily }: { district: District; fontFamily: string | null }) {
-  const texture = useMemo(
-    () =>
-      fontFamily
-        ? createLabelTexture(`${district.gen}기 마을 · ${district.count}명`, {
-            width: 640,
-            height: 144,
-            fontSize: 72,
-            fontFamily,
-            color: '#ffffff',
-            background: district.color,
-          })
-        : null,
-    [district, fontFamily],
-  );
-  useEffect(() => () => texture?.dispose(), [texture]);
-
-  return (
-    <group position={[district.x, 0, district.z]}>
-      <mesh rotation-x={-Math.PI / 2} position-y={0.03} receiveShadow>
-        <circleGeometry args={[district.radius, 48]} />
-        <meshStandardMaterial color={SAND} roughness={1} />
-      </mesh>
-      <mesh rotation-x={-Math.PI / 2} position-y={0.05} receiveShadow>
-        <ringGeometry args={[district.radius - 0.7, district.radius, 64]} />
-        <meshStandardMaterial color={district.color} roughness={1} />
-      </mesh>
-      {/* 마을 한가운데 깃대 */}
-      <mesh position-y={4.5} castShadow>
-        <cylinderGeometry args={[0.16, 0.22, 9, 8]} />
-        <meshStandardMaterial color="#f5f5f5" roughness={0.8} />
-      </mesh>
-      <mesh position={[1.3, 7.9, 0]} castShadow>
-        <boxGeometry args={[2.4, 1.5, 0.08]} />
-        <meshStandardMaterial color={district.color} roughness={0.9} />
-      </mesh>
-      <mesh position-y={0.25} castShadow receiveShadow>
-        <cylinderGeometry args={[1, 1.2, 0.5, 10]} />
-        <meshStandardMaterial color="#cfc6b4" roughness={1} />
-      </mesh>
-      {texture && (
-        <sprite position-y={11.4} scale={[11, 2.48, 1]}>
-          <spriteMaterial map={texture} transparent depthWrite={false} />
-        </sprite>
-      )}
-    </group>
-  );
-}
-
 /** 광장 한가운데 황금 사자상 */
 function Monument() {
   const statue = useMemo(() => {
@@ -200,22 +150,6 @@ function Monument() {
 }
 
 export function Scenery() {
-  // 표지판 글자는 웹폰트를 받은 뒤에 그린다
-  const [fontFamily, setFontFamily] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    const family = displayFontFamily();
-    document.fonts
-      .load(`72px ${family}`, '0123456789기마을명·')
-      .catch(() => undefined)
-      .then(() => {
-        if (!cancelled) setFontFamily(family);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
     <>
       <mesh rotation-x={-Math.PI / 2} receiveShadow>
@@ -224,14 +158,11 @@ export function Scenery() {
       </mesh>
       {village.paths.map((p, i) => (
         <mesh key={i} position={[p.x, 0.02, p.z]} rotation-y={p.rot} receiveShadow>
-          <boxGeometry args={[4.4, 0.02, p.length]} />
+          <boxGeometry args={[4.6, 0.02, p.length]} />
           <meshStandardMaterial color={PATH} roughness={1} />
         </mesh>
       ))}
       <Monument />
-      {village.districts.map((d) => (
-        <DistrictArea key={d.gen} district={d} fontFamily={fontFamily} />
-      ))}
       <Buildings />
     </>
   );

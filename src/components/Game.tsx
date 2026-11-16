@@ -51,7 +51,6 @@ function useKeyboard() {
       if (e.code === 'Escape') {
         if (game.openId !== null) game.close();
         else if (game.directoryOpen) game.setDirectory(false);
-        else if (game.guideId !== null) useGame.setState({ guideId: null });
         return;
       }
       if (isTyping(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;

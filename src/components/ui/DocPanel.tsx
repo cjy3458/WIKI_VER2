@@ -13,7 +13,7 @@ const dateFormat = new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long', timeZon
 export function DocPanel() {
   const person = useGame((s) => getPerson(s.openId));
   const close = useGame((s) => s.close);
-  const guideTo = useGame((s) => s.guideTo);
+  const teleportTo = useGame((s) => s.teleportTo);
   const scroller = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
 
@@ -86,8 +86,8 @@ export function DocPanel() {
           </p>
           <div className="flex gap-2">
             {isFar && (
-              <button type="button" className="btn bg-lion px-3 py-1.5" onClick={() => guideTo(person.id)}>
-                찾아가기
+              <button type="button" className="btn bg-lion px-3 py-1.5" onClick={() => teleportTo(person.id)}>
+                이 사람에게 이동
               </button>
             )}
             <button type="button" className="btn px-3 py-1.5" onClick={close}>
