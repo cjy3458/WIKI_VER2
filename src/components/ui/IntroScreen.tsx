@@ -16,18 +16,20 @@ export function IntroScreen({ canWalk }: { canWalk: boolean }) {
   const setProfile = useNet((s) => s.setProfile);
 
   return (
-    <div className="fixed inset-0 z-30 grid place-items-center overflow-y-auto bg-sky/55 p-4 backdrop-blur-[3px]">
-      <section className="panel w-full max-w-lg p-6 text-center sm:p-8">
+    <div className="fixed inset-0 z-30 grid place-items-center overflow-y-auto bg-brand/40 p-4">
+      <section className="panel w-full max-w-lg text-center">
+        <div className="window-bar">LIKELION.EXE</div>
+        <div className="p-5 sm:p-7">
         <Image
           src="/img/lion.png"
           alt="멋쟁이사자처럼 사자 마스코트"
           width={308}
           height={392}
           priority
-          className="pixelated mx-auto h-28 w-auto animate-bob"
+          className="pixelated mx-auto h-20 w-auto animate-bob"
         />
-        <p className="mt-4 text-sm font-bold tracking-wide text-mane">멋쟁이사자처럼 중앙대학교</p>
-        <h1 className="mt-1 font-display text-4xl leading-tight sm:text-5xl">위키 마을</h1>
+        <p className="mt-4 font-display text-sm tracking-wide text-brand">CAU LIKE_LION</p>
+        <h1 className="mt-1 font-display text-4xl leading-tight sm:text-5xl">WIKI 픽셀 마을</h1>
         <p className="mt-4 text-pretty leading-relaxed text-ink/80">
           서버는 내려갔지만 글은 남았어요.
           <br />
@@ -41,14 +43,14 @@ export function IntroScreen({ canWalk }: { canWalk: boolean }) {
             ['기수', '11기 · 12기'],
             ['마지막 글', lastEdit],
           ].map(([label, value]) => (
-            <div key={label} className="rounded-xl border-2 border-ink/15 bg-white/70 px-2 py-2">
+            <div key={label} className="border-2 border-ink bg-white px-2 py-2">
               <dt className="text-ink/60">{label}</dt>
               <dd className="font-bold">{value}</dd>
             </div>
           ))}
         </dl>
 
-        <fieldset className="mt-5 rounded-2xl border-2 border-ink/15 bg-white/70 p-3 text-left">
+        <fieldset className="mt-5 border-[3px] border-ink bg-white p-3 text-left">
           <legend className="px-1 text-sm font-bold">내 캐릭터</legend>
           <div className="flex flex-wrap items-center gap-3">
             <input
@@ -58,7 +60,7 @@ export function IntroScreen({ canWalk }: { canWalk: boolean }) {
               placeholder="닉네임"
               aria-label="닉네임"
               autoComplete="off"
-              className="min-w-0 flex-1 rounded-xl border-[3px] border-ink bg-white px-3 py-1.5 outline-none focus:ring-4 focus:ring-brand/30"
+              className="min-w-0 flex-1 border-[3px] border-ink bg-white px-3 py-1.5 outline-none focus:ring-4 focus:ring-brand/30"
             />
             <div className="flex gap-1.5" role="radiogroup" aria-label="옷 색">
               {AVATAR_COLORS.map((color) => (
@@ -69,7 +71,7 @@ export function IntroScreen({ canWalk }: { canWalk: boolean }) {
                   aria-checked={profile.color === color}
                   aria-label={`옷 색 ${color}`}
                   onClick={() => setProfile({ color })}
-                  className="size-7 rounded-full border-[3px] border-ink aria-checked:ring-4 aria-checked:ring-brand/50"
+                  className="size-7 border-[3px] border-ink aria-checked:outline-4 aria-checked:outline-offset-2 aria-checked:outline-brand"
                   style={{ backgroundColor: color }}
                 />
               ))}
@@ -108,6 +110,7 @@ export function IntroScreen({ canWalk }: { canWalk: boolean }) {
           <span className="hidden pointer-coarse:inline">왼쪽 아래 조이스틱으로 이동 · 화면을 밀어 둘러보기</span>
         </p>
         <p className="mt-2 text-xs text-ink/50">11기·12기 사람들의 문서만 보존한 읽기 전용 아카이브입니다.</p>
+        </div>
       </section>
     </div>
   );

@@ -1,8 +1,9 @@
 import { people } from '@/lib/people';
 import type { Part } from '@/types/wiki';
 
-// 마을 배치는 전부 여기서 계산한다. 시드 고정 난수만 써서 언제 열어도 같은 자리에 같은 사람이 서 있다.
-// 기수별 구역은 없다. 11기·12기가 한 마을에 섞여 흩어져 있다.
+// 픽셀 섬의 배치는 전부 여기서 계산한다. 기획: docs/world-design.md
+// 시드 고정 난수만 써서 언제 열어도 같은 자리에 같은 사람이 서 있다.
+// 기수별 구역은 없다. 11기·12기가 한 섬에 섞여 흩어져 있다.
 
 export interface Circle {
   x: number;
@@ -34,23 +35,46 @@ export interface Tree {
   scale: number;
 }
 
-export interface Path {
+/** 격자 방향으로만 뻗는 길 (중심, 가로·세로 크기) */
+export interface Road {
   x: number;
   z: number;
-  length: number;
-  rot: number;
+  w: number;
+  d: number;
 }
 
-export const WORLD_RADIUS = 80;
-export const PLAZA_RADIUS = 11;
-export const SPAWN = { x: 0, z: 7.5, rot: Math.PI };
+/** `Space` 로 쓸 수 있는 장치 */
+export interface Spot {
+  id: 'terminal' | 'portal';
+  x: number;
+  z: number;
+  label: string;
+}
 
-/** 주민이 서 있는 범위 (광장 바깥 ~ 마을 가장자리) */
-const NPC_MIN_RADIUS = 13;
-const NPC_MAX_RADIUS = 60;
-const NPC_SPACING = 8;
-const PATH_END = 68;
-const ROOF_COLORS = ['#ff8a3d', '#2fbf87', '#39a9f5', '#ff5d8f', '#f2b21d', '#8f7dff'];
+/** 섬은 한 변이 WORLD_HALF × 2 인 정사각형 */
+export const WORLD_HALF = 72;
+/** 걸어 다닐 수 있는 한계 (가장자리에서 조금 안쪽) */
+export const WALK_HALF = WORLD_HALF - 1.5;
+/** 섬 어디든 포함하는 반경 — 받은 좌표 검증용 */
+export const WORLD_RADIUS = WORLD_HALF * Math.SQRT2;
+export const PLAZA_HALF = 10;
+// 정면의 사자상에 정통으로 막히지 않게 살짝 옆에서 시작한다
+export const SPAWN = { x: 1.5, z: 6.5, rot: Math.PI };
+
+export const landmarks = {
+  /** WIKI 타워: 북쪽 끝의 거대한 모니터. 남쪽(광장)을 본다 */
+  tower: { x: 0, z: -52 },
+  /** 랜덤 포털: 동쪽의 브라우저 창 모양 문. 서쪽(광장)을 본다 */
+  portal: { x: 50, z: 0 },
+  /** 모닥불 라운지: 서쪽 */
+  lounge: { x: -48, z: 0 },
+  /** 연못: 남동쪽 */
+  pond: { x: 34, z: 40, half: 7 },
+} as const;
+
+const ROAD_WIDTH = 5;
+const NPC_SPACING = 8.5;
+const ROOF_COLORS = ['#e2574c', '#4c4df5', '#2fa84f', '#f2a81d', '#b05ad6', '#19a5c9'];
 
 function mulberry32(seed: number) {
   let a = seed >>> 0;
@@ -63,97 +87,114 @@ function mulberry32(seed: number) {
   };
 }
 
-function distanceToSegment(px: number, pz: number, ax: number, az: number, bx: number, bz: number) {
-  const dx = bx - ax;
-  const dz = bz - az;
-  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz)));
-  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
-}
-
 function build() {
   const rand = mulberry32(20240106); // 위키 첫 문서가 만들어진 날
+  const { tower, portal, lounge, pond } = landmarks;
   const far = (list: { x: number; z: number }[], x: number, z: number, min: number) =>
     list.every((o) => Math.hypot(x - o.x, z - o.z) >= min);
 
-  // 1) 광장에서 네 방향으로 뻗는 길
-  const roads = [0, 1, 2, 3].map((i) => {
-    const a = (i * Math.PI) / 2 + Math.PI / 4;
-    return { ax: Math.sin(a) * (PLAZA_RADIUS - 1), az: Math.cos(a) * (PLAZA_RADIUS - 1), bx: Math.sin(a) * PATH_END, bz: Math.cos(a) * PATH_END, a };
-  });
-  const paths: Path[] = roads.map((r) => ({
-    x: (r.ax + r.bx) / 2,
-    z: (r.az + r.bz) / 2,
-    length: PATH_END - PLAZA_RADIUS + 1,
-    rot: r.a,
-  }));
-  const roadDistance = (x: number, z: number) => Math.min(...roads.map((r) => distanceToSegment(x, z, r.ax, r.az, r.bx, r.bz)));
+  // 1) 길: 광장에서 네 방향, 격자에 맞춰 곧게
+  const roads: Road[] = [
+    { x: 0, z: (-PLAZA_HALF + tower.z + 9) / 2, w: ROAD_WIDTH, d: -tower.z - 9 - PLAZA_HALF },
+    { x: (PLAZA_HALF + portal.x - 4) / 2, z: 0, w: portal.x - 4 - PLAZA_HALF, d: ROAD_WIDTH },
+    { x: (-PLAZA_HALF + lounge.x + 7) / 2, z: 0, w: -lounge.x - 7 - PLAZA_HALF, d: ROAD_WIDTH },
+    { x: 0, z: (PLAZA_HALF + 58) / 2, w: ROAD_WIDTH, d: 58 - PLAZA_HALF },
+  ];
+  const onRoad = (x: number, z: number, margin: number) =>
+    roads.some((r) => Math.abs(x - r.x) < r.w / 2 + margin && Math.abs(z - r.z) < r.d / 2 + margin);
 
-  // 2) 주민: 기수·파트와 상관없이 마을 여기저기에 흩어 세운다
+  // 건축물이 차지하는 자리 (주민·집·나무가 피한다)
+  const reserved: Circle[] = [
+    { x: tower.x, z: tower.z + 3, r: 17 },
+    { x: portal.x, z: portal.z, r: 10 },
+    { x: lounge.x, z: lounge.z, r: 10 },
+    { x: pond.x, z: pond.z, r: pond.half * 1.6 },
+  ];
+  const free = (x: number, z: number, margin: number) =>
+    Math.max(Math.abs(x), Math.abs(z)) > PLAZA_HALF + margin &&
+    reserved.every((c) => Math.hypot(x - c.x, z - c.z) > c.r + margin - 2);
+  const pick = (half: number) => [(rand() * 2 - 1) * half, (rand() * 2 - 1) * half] as const;
+
+  // 2) 주민: 기수·파트와 상관없이 섬 여기저기에
   const npcs: Npc[] = [];
   for (const person of [...people].sort((a, b) => a.id - b.id)) {
     let spacing = NPC_SPACING;
     for (let attempt = 0; ; attempt++) {
       // 자리가 안 나면 간격을 조금씩 좁힌다
       if (attempt > 0 && attempt % 200 === 0) spacing *= 0.9;
-      const r = Math.sqrt(NPC_MIN_RADIUS ** 2 + rand() * (NPC_MAX_RADIUS ** 2 - NPC_MIN_RADIUS ** 2));
-      const a = rand() * Math.PI * 2;
-      const x = Math.sin(a) * r;
-      const z = Math.cos(a) * r;
-      if (!far(npcs, x, z, spacing)) continue;
+      const [x, z] = pick(WORLD_HALF - 9);
+      if (!free(x, z, 3) || onRoad(x, z, 1.2) || !far(npcs, x, z, spacing)) continue;
       // 대체로 광장 쪽을 보되 제각각
       npcs.push({ id: person.id, name: person.name, part: person.part, x, z, rot: Math.atan2(-x, -z) + (rand() - 0.5) * 2.4 });
       break;
     }
   }
 
-  // 3) 집
+  // 3) 집: 네 방향 중 하나를 본다
   const houses: House[] = [];
-  for (let attempt = 0; attempt < 3000 && houses.length < 30; attempt++) {
-    const r = 16 + Math.sqrt(rand()) * 56;
-    const a = rand() * Math.PI * 2;
-    const x = Math.sin(a) * r;
-    const z = Math.cos(a) * r;
-    if (!far(npcs, x, z, 6.5) || !far(houses, x, z, 11) || roadDistance(x, z) < 6) continue;
+  for (let attempt = 0; attempt < 4000 && houses.length < 26; attempt++) {
+    const [x, z] = pick(WORLD_HALF - 8);
+    if (!free(x, z, 5) || onRoad(x, z, 4.5) || !far(npcs, x, z, 6.5) || !far(houses, x, z, 13)) continue;
     houses.push({
-      x,
-      z,
-      rot: Math.atan2(-x, -z) + (rand() - 0.5) * 1.2,
-      scale: 0.9 + rand() * 0.4,
+      x: Math.round(x),
+      z: Math.round(z),
+      rot: (Math.floor(rand() * 4) * Math.PI) / 2,
+      scale: 0.95 + rand() * 0.3,
       color: ROOF_COLORS[houses.length % ROOF_COLORS.length],
     });
   }
 
-  // 4) 나무: 마을 안에는 드문드문, 바깥은 숲
+  // 4) 나무
   const trees: Tree[] = [];
-  for (let attempt = 0; attempt < 6000 && trees.length < 300; attempt++) {
-    const r = Math.sqrt(rand()) * (WORLD_RADIUS + 22);
-    const a = rand() * Math.PI * 2;
-    const x = Math.sin(a) * r;
-    const z = Math.cos(a) * r;
-    const scale = 0.8 + rand() * 0.9;
-    const inside = r < NPC_MAX_RADIUS + 4;
-    if (r < PLAZA_RADIUS + 3) continue;
-    if (inside && rand() < 0.55) continue;
-    if (!far(npcs, x, z, 3.2) || !far(houses, x, z, 5) || !far(trees, x, z, inside ? 6 : 3.8)) continue;
-    if (roadDistance(x, z) < 3.6) continue;
-    trees.push({ x, z, scale });
+  for (let attempt = 0; attempt < 8000 && trees.length < 170; attempt++) {
+    const [x, z] = pick(WORLD_HALF - 3);
+    if (!free(x, z, 2) || onRoad(x, z, 1.8)) continue;
+    if (!far(npcs, x, z, 3.4) || !far(houses, x, z, 5.2) || !far(trees, x, z, 5.5)) continue;
+    trees.push({ x: Math.round(x * 2) / 2, z: Math.round(z * 2) / 2, scale: 0.85 + rand() * 0.6 });
   }
 
-  // 5) 충돌체 (전부 원)
+  // 5) 장치
+  const spots: Spot[] = [
+    { id: 'terminal', x: tower.x, z: tower.z + 13.2, label: '검색 터미널 켜기' },
+    { id: 'portal', x: portal.x - 3.2, z: portal.z, label: '랜덤 포털 타기' },
+  ];
+
+  // 6) 충돌체 (전부 원)
   const colliders: Circle[] = [
-    { x: 0, z: 0, r: 2.6 }, // 광장 동상
-    ...houses.map((h) => ({ x: h.x, z: h.z, r: 2.5 * h.scale })),
-    ...trees.map((t) => ({ x: t.x, z: t.z, r: 0.55 * t.scale })),
+    { x: 0, z: 0, r: 2.6 }, // 광장 사자상
+    // 타워: 모니터 본체 + 받침 + 터미널 책상
+    ...[-6, -3, 0, 3, 6].map((dx) => ({ x: tower.x + dx, z: tower.z, r: 2.6 })),
+    { x: tower.x, z: tower.z + 10, r: 2.4 },
+    // 포털 양쪽 기둥
+    { x: portal.x, z: portal.z - 4.3, r: 1.2 },
+    { x: portal.x, z: portal.z + 4.3, r: 1.2 },
+    { x: portal.x + 1.5, z: portal.z, r: 3.4 },
+    // 모닥불과 통나무 의자
+    { x: lounge.x, z: lounge.z, r: 1.7 },
+    ...loungeSeats().map((s) => ({ x: s.x, z: s.z, r: 0.9 })),
+    { x: pond.x, z: pond.z, r: pond.half + 0.8 },
+    ...houses.map((h) => ({ x: h.x, z: h.z, r: 2.6 * h.scale })),
+    ...trees.map((t) => ({ x: t.x, z: t.z, r: 0.6 * t.scale })),
     ...npcs.map((n) => ({ x: n.x, z: n.z, r: 0.6 })),
   ];
 
-  return { npcs, houses, trees, paths, colliders };
+  return { npcs, houses, trees, roads, spots, colliders };
+}
+
+/** 모닥불을 둘러싼 통나무 의자 자리 */
+export function loungeSeats() {
+  const { lounge } = landmarks;
+  return Array.from({ length: 6 }, (_, i) => {
+    const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+    return { x: lounge.x + Math.sin(a) * 4.6, z: lounge.z + Math.cos(a) * 4.6, rot: a };
+  });
 }
 
 export const village = build();
 
 const npcById = new Map(village.npcs.map((n) => [n.id, n]));
 export const getNpc = (id: number | null) => (id === null ? undefined : npcById.get(id));
+export const getSpot = (id: Spot['id'] | null) => village.spots.find((s) => s.id === id);
 
 const STAND_DISTANCE = 2.4;
 
@@ -165,7 +206,7 @@ export function spotNear(npc: Npc) {
     const x = npc.x + Math.sin(a) * STAND_DISTANCE;
     const z = npc.z + Math.cos(a) * STAND_DISTANCE;
     const blocked = village.colliders.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + 0.55);
-    if (!blocked && Math.hypot(x, z) < WORLD_RADIUS) return { x, z, rot: Math.atan2(npc.x - x, npc.z - z) };
+    if (!blocked && Math.max(Math.abs(x), Math.abs(z)) < WALK_HALF) return { x, z, rot: Math.atan2(npc.x - x, npc.z - z) };
   }
   return { x: npc.x, z: npc.z + STAND_DISTANCE, rot: Math.PI };
 }

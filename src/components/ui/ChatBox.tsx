@@ -28,7 +28,7 @@ export function ChatBox() {
           ref={log}
           aria-live="polite"
           aria-label="채팅 기록"
-          className="max-h-28 overflow-y-auto rounded-xl border-2 border-ink/80 bg-paper/85 px-2.5 py-1.5 text-sm leading-snug sm:max-h-40"
+          className="max-h-28 overflow-y-auto border-2 border-ink/80 bg-paper/85 px-2.5 py-1.5 text-sm leading-snug sm:max-h-40"
         >
           {recent.map((m) => (
             <li key={m.key} className="break-words">
@@ -64,7 +64,7 @@ export function ChatBox() {
           enterKeyHint="send"
           placeholder={status === 'failed' ? '연결 안 됨 (혼자 접속 중)' : 'Enter 로 채팅'}
           aria-label="채팅 입력"
-          className="min-w-0 flex-1 rounded-xl border-[3px] border-ink bg-white/95 px-3 py-1.5 text-sm outline-none focus:ring-4 focus:ring-brand/30"
+          className="min-w-0 flex-1 border-[3px] border-ink bg-white/95 px-3 py-1.5 text-sm outline-none focus:ring-4 focus:ring-brand/30"
         />
         <button type="submit" className="btn px-3 py-1 text-sm">
           보내기

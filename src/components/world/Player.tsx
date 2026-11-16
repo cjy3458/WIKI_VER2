@@ -7,7 +7,7 @@ import { dampAngle } from '@/components/world/geo';
 import { ARM_OFFSET, LEG_OFFSET, LIMB_PIVOT, createPlayerGeometries } from '@/components/world/lionGeometry';
 import { useNet } from '@/lib/net';
 import { cameraState, controls, isBlocked, player } from '@/lib/store';
-import { WORLD_RADIUS, village } from '@/lib/village';
+import { WALK_HALF, village } from '@/lib/village';
 
 const WALK_SPEED = 7.5;
 const RUN_SPEED = 12.5;
@@ -87,11 +87,9 @@ export function Player() {
           player.z = c.z + (dz / d) * min;
         }
       }
-      const fromCenter = Math.hypot(player.x, player.z);
-      if (fromCenter > WORLD_RADIUS) {
-        player.x *= WORLD_RADIUS / fromCenter;
-        player.z *= WORLD_RADIUS / fromCenter;
-      }
+      // 섬 밖(모눈 허공)으로는 못 나간다
+      player.x = Math.max(-WALK_HALF, Math.min(WALK_HALF, player.x));
+      player.z = Math.max(-WALK_HALF, Math.min(WALK_HALF, player.z));
     } else {
       player.speed = 0;
     }

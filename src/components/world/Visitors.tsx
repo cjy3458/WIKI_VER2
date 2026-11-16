@@ -1,54 +1,20 @@
 'use client';
 
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { createLabelTexture, dampAngle, displayFontFamily } from '@/components/world/geo';
+import { dampAngle } from '@/components/world/geo';
 import { createNpcGeometries } from '@/components/world/lionGeometry';
+import { useLabelTexture } from '@/components/world/useLabelTexture';
+import type { LabelStyle } from '@/components/world/useLabelTexture';
 import { BUBBLE_MS, SELF, remotes, useNet } from '@/lib/net';
 import type { Peer } from '@/lib/net';
 import { player } from '@/lib/store';
 
 const BUBBLE_CHARS = 16;
 
-interface LabelStyle {
-  width: number;
-  height: number;
-  fontSize: number;
-  color?: string;
-  background?: string;
-}
-
-/** 글자를 그린 텍스처. 웹폰트에서 그 글자 조각을 받은 뒤에 그린다 */
-function useLabelTexture(text: string | null, style: LabelStyle) {
-  const [texture, setTexture] = useState<THREE.Texture | null>(null);
-  const { width, height, fontSize, color, background } = style;
-
-  useEffect(() => {
-    if (!text) return;
-    let cancelled = false;
-    let created: THREE.Texture | null = null;
-    const fontFamily = displayFontFamily();
-    document.fonts
-      .load(`${fontSize}px ${fontFamily}`, text)
-      .catch(() => undefined)
-      .then(() => {
-        if (cancelled) return;
-        created = createLabelTexture(text, { width, height, fontSize, fontFamily, color, background });
-        setTexture(created);
-      });
-    return () => {
-      cancelled = true;
-      created?.dispose();
-      setTexture(null);
-    };
-  }, [text, width, height, fontSize, color, background]);
-
-  return texture;
-}
-
 const BUBBLE_STYLE: LabelStyle = { width: 768, height: 112, fontSize: 40 };
-const NAME_STYLE: LabelStyle = { width: 384, height: 96, fontSize: 42, color: '#ffffff', background: 'rgba(42,33,64,0.92)' };
+const NAME_STYLE: LabelStyle = { width: 384, height: 96, fontSize: 42, color: '#ffffff', background: '#000000' };
 
 /** 머리 위 말풍선. 채팅을 치면 몇 초 떠 있다 사라진다 */
 function Bubble({ id }: { id: string }) {

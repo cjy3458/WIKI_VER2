@@ -43,7 +43,7 @@ export function CameraRig() {
       pinch = 0;
     };
     const zoom = (amount: number) => {
-      cameraState.distance = THREE.MathUtils.clamp(cameraState.distance + amount, 7, 42);
+      cameraState.distance = THREE.MathUtils.clamp(cameraState.distance + amount, 7, 120);
     };
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -98,7 +98,7 @@ export function CameraRig() {
       shadow-camera-top={46}
       shadow-camera-bottom={-46}
       shadow-camera-near={1}
-      shadow-camera-far={130}
+      shadow-camera-far={160}
       shadow-bias={-0.0006}
     />
   );

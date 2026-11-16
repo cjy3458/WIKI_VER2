@@ -9,6 +9,7 @@ import { Hud } from '@/components/ui/Hud';
 import { IntroScreen } from '@/components/ui/IntroScreen';
 import { Lightbox } from '@/components/ui/Lightbox';
 import { useNet } from '@/lib/net';
+import { people } from '@/lib/people';
 import { controls, isBlocked, resetControls, useGame } from '@/lib/store';
 
 const World = dynamic(() => import('@/components/world/World'), {
@@ -38,6 +39,13 @@ function hasWebgl() {
   return webglSupport;
 }
 const subscribeNever = () => () => undefined;
+
+/** 터미널 → 주민 찾기 창, 포털 → 아무 주민 앞으로 */
+export function activateSpot(id: 'terminal' | 'portal') {
+  const game = useGame.getState();
+  if (id === 'terminal') game.setDirectory(true);
+  else game.teleportTo(people[Math.floor(Math.random() * people.length)].id);
+}
 
 /** 키보드 입력. 한글 입력 상태에서도 되도록 e.key 가 아니라 e.code 로 본다 */
 function useKeyboard() {
@@ -79,6 +87,9 @@ function useKeyboard() {
           // 포커스가 남아 있던 버튼이 스페이스바로 같이 눌리지 않게 한다
           if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
           game.open(game.nearbyId);
+        } else if (game.nearbySpot) {
+          e.preventDefault();
+          activateSpot(game.nearbySpot);
         }
       }
     };
@@ -110,7 +121,7 @@ export function Game() {
   }, [phase]);
 
   return (
-    <main className="fixed inset-0 overflow-hidden bg-sky">
+    <main className="desktop fixed inset-0 overflow-hidden">
       {webgl ? (
         <World />
       ) : (

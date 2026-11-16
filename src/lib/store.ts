@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { SPAWN, getNpc, spotNear } from '@/lib/village';
+import type { Spot } from '@/lib/village';
 
 // 드물게 바뀌는 값만 React 상태로 둔다. 매 프레임 바뀌는 값은 아래 plain object.
 
@@ -7,6 +8,8 @@ interface GameState {
   phase: 'intro' | 'play';
   /** 말을 걸 수 있는 거리 안의 NPC */
   nearbyId: number | null;
+  /** `Space` 로 쓸 수 있는 거리 안의 장치 (터미널, 포털) */
+  nearbySpot: Spot['id'] | null;
   /** 글이 열려 있는 사람 */
   openId: number | null;
   directoryOpen: boolean;
@@ -25,6 +28,7 @@ interface GameState {
 export const useGame = create<GameState>((set) => ({
   phase: 'intro',
   nearbyId: null,
+  nearbySpot: null,
   openId: null,
   directoryOpen: false,
   zoom: null,
@@ -67,7 +71,7 @@ export const controls = {
 };
 
 /** snap: 다음 프레임에 카메라를 부드럽게 따라가지 않고 바로 옮긴다 (순간이동 직후) */
-export const cameraState = { yaw: 0, pitch: 0.46, distance: 19, snap: true };
+export const cameraState = { yaw: 0, pitch: 0.4, distance: 21, snap: true };
 
 export function resetControls() {
   const k = controls.keys;

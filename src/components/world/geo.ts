@@ -32,6 +32,36 @@ export function dampAngle(current: number, target: number, lambda: number, dt: n
   return current + diff * (1 - Math.exp(-lambda * dt));
 }
 
+/**
+ * 픽셀 아트 텍스처. 문자열 한 줄이 픽셀 한 줄이고, 글자마다 palette 의 색을 찍는다.
+ * 확대해도 뭉개지지 않게 NearestFilter 로 반복한다.
+ */
+export function pixelTexture(rows: string[], palette: Record<string, string>, repeat?: [number, number]) {
+  const canvas = document.createElement('canvas');
+  canvas.width = rows[0].length;
+  canvas.height = rows.length;
+  const ctx = canvas.getContext('2d')!;
+  rows.forEach((row, y) => {
+    Array.from(row).forEach((ch, x) => {
+      const color = palette[ch];
+      if (!color) return;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, 1, 1);
+    });
+  });
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.NearestFilter;
+  // 가까이서는 또렷한 픽셀, 멀리서는 밉맵으로 뭉개 얼룩(모아레)을 없앤다
+  texture.minFilter = THREE.NearestMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  if (repeat) {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(...repeat);
+  }
+  return texture;
+}
+
 interface LabelOptions {
   width: number;
   height: number;
@@ -42,38 +72,41 @@ interface LabelOptions {
   accent?: string;
 }
 
-/** 글자를 그린 캔버스 텍스처 (이름표, 마을 표지판) */
+/** 글자를 그린 캔버스 텍스처 (이름표, 표지판, 말풍선). 구버전 위키처럼 검은 테두리의 네모 상자 */
 export function createLabelTexture(text: string, o: LabelOptions) {
   const canvas = document.createElement('canvas');
   canvas.width = o.width;
   canvas.height = o.height;
   const ctx = canvas.getContext('2d')!;
-  const pad = 6;
-  const radius = (o.height - pad * 2) / 2;
+  const border = Math.max(4, Math.round(o.height * 0.06));
+  const shadow = border;
+  const pad = 4;
+  const boxHeight = o.height - pad * 2 - shadow;
   ctx.font = `${o.fontSize}px ${o.fontFamily}`;
   const textWidth = ctx.measureText(text).width;
-  const dot = o.accent ? o.fontSize * 0.9 : 0;
-  const boxWidth = Math.min(o.width - pad * 2, textWidth + dot + radius * 2);
-  const left = (o.width - boxWidth) / 2;
+  const dot = o.accent ? o.fontSize * 0.85 : 0;
+  const boxWidth = Math.min(o.width - pad * 2 - shadow, textWidth + dot + o.fontSize * 0.9);
+  const left = Math.round((o.width - boxWidth - shadow) / 2);
 
-  ctx.beginPath();
-  ctx.roundRect(left, pad, boxWidth, o.height - pad * 2, radius);
-  ctx.fillStyle = o.background ?? 'rgba(255,255,255,0.94)';
-  ctx.fill();
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = 'rgba(42,33,64,0.9)';
-  ctx.stroke();
+  // 딱딱한 그림자 → 테두리 → 바탕
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(left + shadow, pad + shadow, boxWidth, boxHeight);
+  ctx.fillRect(left, pad, boxWidth, boxHeight);
+  ctx.fillStyle = o.background ?? '#ffffff';
+  ctx.fillRect(left + border, pad + border, boxWidth - border * 2, boxHeight - border * 2);
 
+  const middle = pad + boxHeight / 2;
   if (o.accent) {
-    ctx.beginPath();
-    ctx.arc(left + radius * 0.95, o.height / 2, o.fontSize * 0.28, 0, Math.PI * 2);
+    const size = o.fontSize * 0.42;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(left + border + o.fontSize * 0.3 - 3, middle - size / 2 - 3, size + 6, size + 6);
     ctx.fillStyle = o.accent;
-    ctx.fill();
+    ctx.fillRect(left + border + o.fontSize * 0.3, middle - size / 2, size, size);
   }
-  ctx.fillStyle = o.color ?? '#2a2140';
+  ctx.fillStyle = o.color ?? '#000000';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, o.width / 2 + dot / 2, o.height / 2 + o.fontSize * 0.06);
+  ctx.fillText(text, left + boxWidth / 2 + dot / 2, middle + o.fontSize * 0.04);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -81,8 +114,8 @@ export function createLabelTexture(text: string, o: LabelOptions) {
   return texture;
 }
 
-/** layout.tsx 가 심어 둔 표시용 글꼴 이름 */
+/** layout.tsx 가 심어 둔 픽셀 글꼴(둥근모) 이름 */
 export function displayFontFamily() {
-  const value = getComputedStyle(document.documentElement).getPropertyValue('--font-jua').trim();
-  return value || 'sans-serif';
+  const value = getComputedStyle(document.documentElement).getPropertyValue('--font-pixel').trim();
+  return value || 'monospace';
 }

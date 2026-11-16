@@ -41,12 +41,13 @@ export function DocPanel() {
         role="dialog"
         aria-modal="true"
         aria-label={`${person.name}의 글`}
-        className="panel flex max-h-[92dvh] w-full max-w-3xl flex-col rounded-b-none sm:max-h-[88dvh] sm:rounded-b-3xl"
+        className="panel flex max-h-[92dvh] w-full max-w-3xl flex-col sm:max-h-[88dvh]"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="window-bar">{person.name}.wiki</div>
         <header className="flex items-start gap-3 border-b-[3px] border-ink p-4 sm:gap-4 sm:p-5">
           <div
-            className="grid size-16 shrink-0 place-items-center rounded-2xl border-[3px] border-ink sm:size-20"
+            className="grid size-16 shrink-0 place-items-center border-[3px] border-ink sm:size-20"
             style={{ backgroundColor: PART_COLOR[person.part] }}
           >
             <Image src="/img/lion.png" alt="" width={44} height={56} className="pixelated h-12 w-auto sm:h-14" />
