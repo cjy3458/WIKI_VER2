@@ -18,7 +18,7 @@ export default function World() {
       shadows="percentage"
       frameloop={playing ? 'always' : 'demand'}
       dpr={[1, 2]}
-      camera={{ fov: 48, near: 0.5, far: 600, position: [0, 14, 24] }}
+      camera={{ fov: 48, near: 1, far: 600, position: [0, 14, 24] }}
       gl={{ alpha: true }}
       className="touch-none"
       style={{ position: 'absolute', inset: 0 }}

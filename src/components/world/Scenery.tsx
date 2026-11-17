@@ -21,24 +21,6 @@ const GRASS = ['GGGgGGGG', 'GGGGGGdG', 'gGGGGGGG', 'GGGGdGGG', 'GGgGGGGG', 'GGGG
 const BRICK = ['TTTTTTTT', 'TTTTTTTT', 'TTTBTTTT', 'BBBBBBBB', 'TTTTTTTT', 'TTTTTTTT', 'TTTTTTTB', 'BBBBBBBB'];
 const WATER = ['WWWWWWWW', 'WLLWWWWW', 'WWWWWWLW', 'WWWWWWWW', 'WWWDDWWW', 'WWWWWWWW', 'LWWWWWWW', 'WWWWWDDW'];
 const PORTAL = ['ABCDEFAB', 'BCDEFABC', 'CDEFABCD', 'DEFABCDE', 'EFABCDEF', 'FABCDEFA', 'ABCDEFAB', 'BCDEFABC'];
-const SUN = [
-  '................',
-  '.......RR.......',
-  '...RR..RR..RR...',
-  '...RRRRRRRRRR...',
-  '....RYYYYYYR....',
-  '...RYYyyYYYYR...',
-  '.RRRYyYYYYYYRRR.',
-  '.RRRYYKYYKYYRRR.',
-  '...RYYYYYYYYR...',
-  '...RYYYYPYYYR...',
-  '....RYYYYYYR....',
-  '...RRRRRRRRRR...',
-  '...RR..RR..RR...',
-  '.......RR.......',
-  '................',
-  '................',
-];
 const HEART = ['.XX.XX.', 'XWXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];
 
 function useTextures() {
@@ -50,7 +32,6 @@ function useTextures() {
       plaza: pixelTexture(['AB', 'BA'], { A: '#fbf6e6', B: '#e6dbbd' }, [PLAZA_HALF / 2, PLAZA_HALF / 2]),
       water: pixelTexture(WATER, { W: '#0aa0e6', L: '#8fdcff', D: '#0b78b8' }, [3.5, 3.5]),
       portal: pixelTexture(PORTAL, { A: '#ff5d8f', B: '#ffd83a', C: '#2fbf87', D: '#39a9f5', E: '#4c4df5', F: '#b05ad6' }, [1, 1]),
-      sun: pixelTexture(SUN, { R: '#e0636b', Y: '#ffd91a', y: '#fff3a0', K: '#000000', P: '#c7584f' }),
       roads: village.roads.map((r) => pixelTexture(BRICK, { T: '#ecd9a6', B: '#c4a66b' }, [r.w / 2.5, r.d / 2.5])),
     };
   }, []);
@@ -428,11 +409,11 @@ function Pond({ texture }: { texture: THREE.Texture }) {
   });
   return (
     <group position={[x, 0, z]}>
-      <mesh position-y={0.05} receiveShadow>
-        <boxGeometry args={[half * 2 + 2, 0.1, half * 2 + 2]} />
+      <mesh position-y={0.06} receiveShadow>
+        <boxGeometry args={[half * 2 + 2, 0.12, half * 2 + 2]} />
         <meshStandardMaterial color="#c9a277" roughness={1} />
       </mesh>
-      <mesh position-y={0.14} rotation-x={-Math.PI / 2}>
+      <mesh position-y={0.22} rotation-x={-Math.PI / 2}>
         <planeGeometry args={[half * 2, half * 2]} />
         <meshBasicMaterial ref={surface} map={texture} toneMapped={false} />
       </mesh>
@@ -471,11 +452,11 @@ function Plaza({ texture }: { texture: THREE.Texture }) {
 
   return (
     <group>
-      <mesh position-y={0.03} receiveShadow>
-        <boxGeometry args={[PLAZA_HALF * 2 + 1, 0.06, PLAZA_HALF * 2 + 1]} />
+      <mesh position-y={0.06} receiveShadow>
+        <boxGeometry args={[PLAZA_HALF * 2 + 1, 0.12, PLAZA_HALF * 2 + 1]} />
         <meshStandardMaterial color="#000000" roughness={1} />
       </mesh>
-      <mesh position-y={0.07} rotation-x={-Math.PI / 2} receiveShadow>
+      <mesh position-y={0.22} rotation-x={-Math.PI / 2} receiveShadow>
         <planeGeometry args={[PLAZA_HALF * 2, PLAZA_HALF * 2]} />
         <meshStandardMaterial map={texture} roughness={1} />
       </mesh>
@@ -517,14 +498,14 @@ export function Scenery() {
         <meshStandardMaterial attach="material-4" map={textures.cliff} roughness={1} />
         <meshStandardMaterial attach="material-5" map={textures.cliff} roughness={1} />
       </mesh>
-      {/* 잔디 블록 테두리 */}
-      <mesh position-y={-0.45}>
+      {/* 잔디 블록 테두리. 윗면이 섬 윗면(y=0)과 겹치면 두 면이 번갈아 보이며 깜빡인다 → 반드시 더 낮게 */}
+      <mesh position-y={-0.75}>
         <boxGeometry args={[size + 1.2, 0.9, size + 1.2]} />
         <meshStandardMaterial color="#0f8f0a" roughness={1} />
       </mesh>
 
       {village.roads.map((road, i) => (
-        <mesh key={i} position={[road.x, 0.04, road.z]} rotation-x={-Math.PI / 2} receiveShadow>
+        <mesh key={i} position={[road.x, 0.1, road.z]} rotation-x={-Math.PI / 2} receiveShadow>
           <planeGeometry args={[road.w, road.d]} />
           <meshStandardMaterial map={textures.roads[i]} roughness={1} />
         </mesh>
@@ -537,10 +518,6 @@ export function Scenery() {
       <Pond texture={textures.water} />
       <Blocks />
 
-      {/* 구버전 그림의 얼굴 달린 해 */}
-      <sprite position={[58, 44, -112]} scale={[30, 30, 1]}>
-        <spriteMaterial map={textures.sun} transparent />
-      </sprite>
     </>
   );
 }

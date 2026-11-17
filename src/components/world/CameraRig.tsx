@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { DIVE_SECONDS, cameraState, player } from '@/lib/store';
 
+const SHADOW_STEP = 8;
 const lookAt = new THREE.Vector3();
 const desired = new THREE.Vector3();
 
@@ -89,8 +90,11 @@ export function CameraRig() {
     // 그림자 범위가 플레이어를 따라다니게 한다
     const light = sun.current;
     if (light) {
-      light.position.set(player.x + 28, 46, player.z + 18);
-      light.target.position.set(player.x, 0, player.z);
+      // 걸을 때마다 조금씩 옮기면 그림자 가장자리가 떨린다. 몇 걸음에 한 번씩만 옮긴다
+      const lx = Math.round(player.x / SHADOW_STEP) * SHADOW_STEP;
+      const lz = Math.round(player.z / SHADOW_STEP) * SHADOW_STEP;
+      light.position.set(lx + 28, 46, lz + 18);
+      light.target.position.set(lx, 0, lz);
       light.target.updateMatrixWorld();
     }
   });
@@ -102,10 +106,10 @@ export function CameraRig() {
       color="#fff4dd"
       castShadow
       shadow-mapSize={[2048, 2048]}
-      shadow-camera-left={-46}
-      shadow-camera-right={46}
-      shadow-camera-top={46}
-      shadow-camera-bottom={-46}
+      shadow-camera-left={-52}
+      shadow-camera-right={52}
+      shadow-camera-top={52}
+      shadow-camera-bottom={-52}
       shadow-camera-near={1}
       shadow-camera-far={160}
       shadow-bias={-0.0006}
