@@ -3,8 +3,8 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { dampAngle } from '@/components/world/geo';
-import { ARM_OFFSET, LEG_OFFSET, LIMB_PIVOT, createPlayerGeometries } from '@/components/world/lionGeometry';
+import { RENDER_ORDER, createGhostMaterial, dampAngle } from '@/components/world/geo';
+import { ARM_OFFSET, LEG_OFFSET, LIMB_PIVOT, createGhostGeometry, createPlayerGeometries } from '@/components/world/lionGeometry';
 import { useNet } from '@/lib/net';
 import { cameraState, controls, isBlocked, player } from '@/lib/store';
 import { WALK_HALF, village } from '@/lib/village';
@@ -24,6 +24,8 @@ export function Player() {
   const assets = useMemo(
     () => ({
       ...createPlayerGeometries(),
+      ghost: createGhostGeometry(),
+      ghostMaterial: createGhostMaterial(),
       furMaterial: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true }),
       shirtMaterial: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9, flatShading: true }),
     }),
@@ -39,6 +41,8 @@ export function Player() {
   useEffect(
     () => () => {
       assets.head.dispose();
+      assets.ghost.dispose();
+      assets.ghostMaterial.dispose();
       assets.leg.dispose();
       assets.arm.dispose();
       assets.shirt.dispose();
@@ -113,14 +117,16 @@ export function Player() {
 
   return (
     <group ref={root}>
-      <mesh geometry={assets.head} material={assets.furMaterial} castShadow />
-      <mesh geometry={assets.shirt} material={assets.shirtMaterial} castShadow />
-      <mesh ref={legL} geometry={assets.leg} material={assets.furMaterial} position={[-LEG_OFFSET, LIMB_PIVOT.hip, 0]} castShadow />
-      <mesh ref={legR} geometry={assets.leg} material={assets.furMaterial} position={[LEG_OFFSET, LIMB_PIVOT.hip, 0]} castShadow />
-      <mesh ref={armL} geometry={assets.arm} material={assets.furMaterial} position={[-ARM_OFFSET, LIMB_PIVOT.shoulder, 0]} castShadow />
-      <mesh ref={armR} geometry={assets.arm} material={assets.furMaterial} position={[ARM_OFFSET, LIMB_PIVOT.shoulder, 0]} castShadow />
+      {/* 무언가에 가려져도 비쳐 보이는 실루엣 */}
+      <mesh geometry={assets.ghost} material={assets.ghostMaterial} renderOrder={RENDER_ORDER.ghost} />
+      <mesh geometry={assets.head} material={assets.furMaterial} renderOrder={RENDER_ORDER.lion} castShadow />
+      <mesh geometry={assets.shirt} material={assets.shirtMaterial} renderOrder={RENDER_ORDER.lion} castShadow />
+      <mesh ref={legL} geometry={assets.leg} material={assets.furMaterial} renderOrder={RENDER_ORDER.lion} position={[-LEG_OFFSET, LIMB_PIVOT.hip, 0]} castShadow />
+      <mesh ref={legR} geometry={assets.leg} material={assets.furMaterial} renderOrder={RENDER_ORDER.lion} position={[LEG_OFFSET, LIMB_PIVOT.hip, 0]} castShadow />
+      <mesh ref={armL} geometry={assets.arm} material={assets.furMaterial} renderOrder={RENDER_ORDER.lion} position={[-ARM_OFFSET, LIMB_PIVOT.shoulder, 0]} castShadow />
+      <mesh ref={armR} geometry={assets.arm} material={assets.furMaterial} renderOrder={RENDER_ORDER.lion} position={[ARM_OFFSET, LIMB_PIVOT.shoulder, 0]} castShadow />
       {/* 방문자 표시: 파란 목도리 */}
-      <mesh position={[0, 1.06, 0.02]} castShadow>
+      <mesh position={[0, 1.06, 0.02]} renderOrder={RENDER_ORDER.lion} castShadow>
         <boxGeometry args={[0.8, 0.14, 0.56]} />
         <meshStandardMaterial color="#1f5fff" roughness={0.9} />
       </mesh>

@@ -3,8 +3,8 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { dampAngle } from '@/components/world/geo';
-import { createNpcGeometries } from '@/components/world/lionGeometry';
+import { RENDER_ORDER, createGhostMaterial, dampAngle } from '@/components/world/geo';
+import { createGhostGeometry, createNpcGeometries } from '@/components/world/lionGeometry';
 import { useLabelTexture } from '@/components/world/useLabelTexture';
 import type { LabelStyle } from '@/components/world/useLabelTexture';
 import { BUBBLE_MS, SELF, remotes, useNet } from '@/lib/net';
@@ -41,6 +41,8 @@ interface Assets {
   body: THREE.BufferGeometry;
   shirt: THREE.BufferGeometry;
   bodyMaterial: THREE.Material;
+  ghost: THREE.BufferGeometry;
+  ghostMaterial: THREE.Material;
 }
 
 function Visitor({ peer, assets }: { peer: Peer; assets: Assets }) {
@@ -71,13 +73,14 @@ function Visitor({ peer, assets }: { peer: Peer; assets: Assets }) {
 
   return (
     <group ref={group} visible={false}>
-      <mesh geometry={assets.body} material={assets.bodyMaterial} castShadow />
-      <mesh geometry={assets.shirt} castShadow>
+      <mesh geometry={assets.ghost} material={assets.ghostMaterial} renderOrder={RENDER_ORDER.ghost} />
+      <mesh geometry={assets.body} material={assets.bodyMaterial} renderOrder={RENDER_ORDER.lion} castShadow />
+      <mesh geometry={assets.shirt} renderOrder={RENDER_ORDER.lion} castShadow>
         <meshStandardMaterial color={peer.color} roughness={0.9} flatShading />
       </mesh>
       {nameTexture && (
-        <sprite position-y={2.95} scale={[3.4, 0.85, 1]}>
-          <spriteMaterial map={nameTexture} transparent depthWrite={false} />
+        <sprite position-y={2.95} scale={[3.4, 0.85, 1]} renderOrder={RENDER_ORDER.tag}>
+          <spriteMaterial map={nameTexture} transparent depthWrite={false} depthTest={false} />
         </sprite>
       )}
       <Bubble id={peer.id} />
@@ -104,6 +107,8 @@ export function Visitors() {
     () => ({
       ...createNpcGeometries(),
       bodyMaterial: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true }),
+      ghost: createGhostGeometry(),
+      ghostMaterial: createGhostMaterial(),
     }),
     [],
   );
@@ -112,6 +117,8 @@ export function Visitors() {
       assets.body.dispose();
       assets.shirt.dispose();
       assets.bodyMaterial.dispose();
+      assets.ghost.dispose();
+      assets.ghostMaterial.dispose();
     },
     [assets],
   );

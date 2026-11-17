@@ -24,6 +24,22 @@ export function mergeAll(parts: THREE.BufferGeometry[]) {
   return merged;
 }
 
+/**
+ * 그리는 순서. 풍경(0) → 사자 실루엣(1) → 사자(2) → 이름표(5).
+ * 실루엣은 "풍경보다 뒤에 있는 부분"만 그리므로, 사자가 나무·집에 가려져도 그 뒤로 비쳐 보인다.
+ */
+export const RENDER_ORDER = { ghost: 1, lion: 2, tag: 5 };
+
+/** 가려진 사자를 비춰 보이는 재질: 무언가의 뒤에 있는 픽셀에만 흐린 색으로 그린다 */
+export function createGhostMaterial() {
+  return new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    color: '#8d92d6',
+    depthFunc: THREE.GreaterDepth,
+    depthWrite: false,
+  });
+}
+
 /** 각도를 가까운 쪽으로 부드럽게 따라가게 한다 */
 export function dampAngle(current: number, target: number, lambda: number, dt: number) {
   let diff = (target - current) % (Math.PI * 2);

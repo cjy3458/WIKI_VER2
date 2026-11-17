@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { box, displayFontFamily, mergeAll, pixelTexture } from '@/components/world/geo';
 import { createNpcGeometries } from '@/components/world/lionGeometry';
 import { useLabelTexture } from '@/components/world/useLabelTexture';
+import { player } from '@/lib/store';
 import { PLAZA_HALF, WORLD_HALF, landmarks, loungeSeats, village } from '@/lib/village';
 
 // 픽셀 섬의 풍경. 기획: docs/world-design.md — 둥근 것이 없다. 전부 블록이다.
@@ -14,6 +15,10 @@ const dummy = new THREE.Object3D();
 const color = new THREE.Color();
 const BLUE = '#4c4df5';
 const SIGN = { width: 512, height: 116, fontSize: 54 };
+/** 시야를 가리는 나무·집이 낮아졌을 때의 높이 비율 (밑동만 남는다) */
+const CUT_HEIGHT = 0.13;
+/** 카메라에서 이 거리 안에 있는 나무·집도 낮춘다 (화면 가장자리를 크게 덮는 것들) */
+const NEAR_CAMERA = 11;
 
 // ── 픽셀 텍스처 ─────────────────────────────────
 
@@ -55,6 +60,7 @@ function Instances<T>({
   tint,
   vertexColors = true,
   castShadow = true,
+  cutaway,
 }: {
   geometry: THREE.BufferGeometry;
   items: T[];
@@ -62,8 +68,12 @@ function Instances<T>({
   tint?: (item: T) => string;
   vertexColors?: boolean;
   castShadow?: boolean;
+  /** 주면, 카메라와 내 캐릭터 사이를 가릴 때 낮아진다. 물체의 자리·반경·높이 */
+  cutaway?: (item: T) => { x: number; z: number; r: number; h: number };
 }) {
   const ref = useRef<THREE.InstancedMesh>(null);
+  const heights = useRef<Float32Array | null>(null);
+  const footprints = useMemo(() => (cutaway ? items.map(cutaway) : null), [items, cutaway]);
   const material = useMemo(
     () => new THREE.MeshStandardMaterial({ vertexColors, roughness: 1, flatShading: true }),
     [vertexColors],
@@ -88,6 +98,46 @@ function Instances<T>({
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.computeBoundingSphere();
   }, [items, place, tint]);
+
+  useFrame(({ camera }, delta) => {
+    const mesh = ref.current;
+    if (!mesh || !footprints) return;
+    if (!heights.current || heights.current.length !== items.length) heights.current = new Float32Array(items.length).fill(1);
+    const current = heights.current;
+    // 카메라 → 내 캐릭터로 가는 시선
+    const cx = camera.position.x;
+    const cz = camera.position.z;
+    const sx = player.x - cx;
+    const sz = player.z - cz;
+    const length2 = sx * sx + sz * sz || 1;
+    const ease = 1 - Math.exp(-12 * delta);
+    let changed = false;
+    for (let i = 0; i < footprints.length; i++) {
+      const f = footprints[i];
+      const t = ((f.x - cx) * sx + (f.z - cz) * sz) / length2;
+      let blocking = false;
+      if (t > -0.05 && t < 1) {
+        const off = Math.hypot(f.x - (cx + sx * t), f.z - (cz + sz * t));
+        // 그 지점에서 시선의 높이. 시선이 물체 위로 지나가면 가리지 않는다
+        const sightY = camera.position.y + (1.4 - camera.position.y) * t;
+        blocking = off < f.r && f.h > sightY - 0.6;
+      }
+      // 카메라 바로 앞에 있는 것은 시선 한가운데가 아니어도 화면을 크게 덮는다
+      if (!blocking && Math.hypot(f.x - cx, f.z - cz) < NEAR_CAMERA + f.r) blocking = true;
+      const target = blocking ? CUT_HEIGHT : 1;
+      if (Math.abs(current[i] - target) < 0.003) continue;
+      current[i] += (target - current[i]) * ease;
+      dummy.position.set(0, 0, 0);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      place(items[i], dummy);
+      dummy.scale.y *= current[i];
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      changed = true;
+    }
+    if (changed) mesh.instanceMatrix.needsUpdate = true;
+  });
 
   return <instancedMesh ref={ref} args={[geometry, material, items.length]} castShadow={castShadow} receiveShadow />;
 }
@@ -148,6 +198,9 @@ const CLOUD_BLOCKS = Array.from({ length: 14 }, (_, i) => {
     { x: x - s * 1.5, y: y + s * 0.5, z: z + s * 0.5, sx: s * 1.5, sy: s, sz: s },
   ];
 }).flat();
+/** 시야를 가릴 수 있는 범위: 자리, 반경, 높이 */
+const houseFootprint = (h: House) => ({ x: h.x, z: h.z, r: 3.9 * h.scale, h: 5 * h.scale });
+const treeFootprint = (t: Tree) => ({ x: t.x, z: t.z, r: 2.4 * t.scale, h: 5.1 * t.scale });
 const placeCloud = (c: (typeof CLOUD_BLOCKS)[number], o: THREE.Object3D) => {
   o.position.set(c.x, c.y, c.z);
   o.scale.set(c.sx, c.sy, c.sz);
@@ -159,9 +212,9 @@ function Blocks() {
   const cloud = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
   return (
     <>
-      <Instances geometry={house.walls} items={village.houses} place={placeHouse} />
-      <Instances geometry={house.roof} items={village.houses} place={placeHouse} tint={tintHouse} vertexColors={false} />
-      <Instances geometry={tree} items={village.trees} place={placeTree} />
+      <Instances geometry={house.walls} items={village.houses} place={placeHouse} cutaway={houseFootprint} />
+      <Instances geometry={house.roof} items={village.houses} place={placeHouse} tint={tintHouse} vertexColors={false} cutaway={houseFootprint} />
+      <Instances geometry={tree} items={village.trees} place={placeTree} cutaway={treeFootprint} />
       <Instances geometry={cloud} items={CLOUD_BLOCKS} place={placeCloud} vertexColors={false} castShadow={false} />
     </>
   );
@@ -170,12 +223,19 @@ function Blocks() {
 // ── 건축물 ──────────────────────────────────────
 
 /** 건축물 위에 떠 있는 표지판 */
-function Sign({ text, y }: { text: string; y: number }) {
+function Sign({ text, y, at }: { text: string; y: number; at: { x: number; z: number } }) {
   const texture = useLabelTexture(text, SIGN);
+  const material = useRef<THREE.SpriteMaterial>(null);
+  useFrame((_, delta) => {
+    if (!material.current) return;
+    // 멀리서는 길잡이, 가까이 가면 주변 사자들을 가리지 않게 흐려진다
+    const near = Math.hypot(player.x - at.x, player.z - at.z) < 20;
+    material.current.opacity += ((near ? 0.22 : 1) - material.current.opacity) * (1 - Math.exp(-8 * delta));
+  });
   if (!texture) return null;
   return (
-    <sprite position-y={y} scale={[7, 1.59, 1]}>
-      <spriteMaterial map={texture} transparent depthWrite={false} />
+    <sprite position-y={y} scale={[5, 1.13, 1]}>
+      <spriteMaterial ref={material} map={texture} transparent depthWrite={false} />
     </sprite>
   );
 }
@@ -298,7 +358,7 @@ function Tower() {
           <boxGeometry args={[3.2, 0.24, 1.3]} />
           <meshStandardMaterial color="#2b2b2b" roughness={1} />
         </mesh>
-        <Sign text="WIKI 터미널" y={4.2} />
+        <Sign text="WIKI 터미널" y={4.2} at={{ x, z: z + 10 }} />
       </group>
     </group>
   );
@@ -343,7 +403,7 @@ function Portal({ texture }: { texture: THREE.Texture }) {
         <planeGeometry args={[7.2, 8.6]} />
         <meshBasicMaterial ref={surface} map={texture} side={THREE.DoubleSide} toneMapped={false} />
       </mesh>
-      <Sign text="랜덤 포털" y={12.7} />
+      <Sign text="랜덤 포털" y={12.7} at={landmarks.portal} />
     </group>
   );
 }
@@ -387,7 +447,7 @@ function Lounge() {
             <meshBasicMaterial color="#fff06a" />
           </mesh>
         </group>
-        <Sign text="모닥불 라운지" y={5.6} />
+        <Sign text="모닥불 라운지" y={6.4} at={landmarks.lounge} />
       </group>
       {seats.map((seat, i) => (
         <mesh key={i} position={[seat.x, 0.4, seat.z]} rotation-y={seat.rot} castShadow receiveShadow>

@@ -50,6 +50,12 @@ export function createNpcGeometries() {
   return { body, shirt: shirtPart() };
 }
 
+/** 실루엣용: 전신을 한 덩어리로 */
+export function createGhostGeometry() {
+  const { body, shirt } = createNpcGeometries();
+  return mergeAll([body, shirt]);
+}
+
 /** 플레이어용: 팔다리를 따로 움직인다 */
 export function createPlayerGeometries() {
   return { head: mergeAll(headParts()), leg: legPart(), arm: armPart(), shirt: shirtPart() };
