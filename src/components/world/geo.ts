@@ -30,11 +30,14 @@ export function mergeAll(parts: THREE.BufferGeometry[]) {
  */
 export const RENDER_ORDER = { ghost: 1, lion: 2, tag: 5 };
 
-/** 가려진 사자를 비춰 보이는 재질: 무언가의 뒤에 있는 픽셀에만 흐린 색으로 그린다 */
+/**
+ * 가려진 사자를 비춰 보이는 재질: 무언가의 뒤에 있는 픽셀에만 단색 그림자로 그린다.
+ * 깊이를 기록하지 않으므로 평소엔 머리에 가려지는 눈·부리 블록의 안쪽 면까지 그려진다.
+ * 그래서 원래 색(vertexColors)을 쓰면 뒤돌아 있어도 눈이 비쳐 보인다 → 반드시 한 가지 색만 쓴다.
+ */
 export function createGhostMaterial() {
   return new THREE.MeshBasicMaterial({
-    vertexColors: true,
-    color: '#8d92d6',
+    color: '#7f86d9',
     depthFunc: THREE.GreaterDepth,
     depthWrite: false,
   });
