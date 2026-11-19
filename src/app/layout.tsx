@@ -1,3 +1,4 @@
+import { GoogleAnalytics } from '@next/third-parties/google';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { Noto_Sans_KR } from 'next/font/google';
@@ -22,10 +23,14 @@ export const viewport: Viewport = {
   themeColor: '#4c4df5',
 };
 
+/** 방문자 집계(GA4). 측정 ID가 없으면(로컬 개발 등) 아무것도 불러오지 않는다. 이벤트는 보내지 않는다 */
+const gaId = process.env.NEXT_PUBLIC_GA_ID;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko" className={`${pixel.variable} ${noto.variable}`}>
       <body>{children}</body>
+      {gaId && <GoogleAnalytics gaId={gaId} />}
     </html>
   );
 }
