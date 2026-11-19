@@ -1,13 +1,20 @@
 'use client';
 
+import { BookOpen, CornerDownLeft, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { PART_COLOR, people, roleLine } from '@/lib/people';
+import { Portrait, Window } from '@/components/ui/Window';
+import { PART_COLOR, PART_LABEL, homeOf, people } from '@/lib/people';
 import { useGame } from '@/lib/store';
 
 const sorted = [...people].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
-const TAGS = ['11기', '12기'];
+const FILTERS: { tag: string | null; label: string }[] = [
+  { tag: null, label: '전체' },
+  { tag: '11기', label: '11기' },
+  { tag: '12기', label: '12기' },
+];
+const countOf = (tag: string | null) => (tag ? sorted.filter((p) => p.tags.includes(tag)).length : sorted.length);
 
-/** 주민 찾기: 이름을 입력하면 그 사람 앞으로 바로 이동하거나 글을 바로 연다 */
+/** 주민 도감: 사자 초상 카드를 누르면 그 사람 앞으로 이동한다. 글만 보려면 카드의 "글 보기" */
 export function Directory() {
   const isOpen = useGame((s) => s.directoryOpen);
   const setDirectory = useGame((s) => s.setDirectory);
@@ -23,90 +30,86 @@ export function Directory() {
 
   if (!isOpen) return null;
 
+  const typing = query.trim() !== '';
   const go = (id: number) => {
     setQuery('');
     teleportTo(id);
   };
 
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-end justify-center bg-ink/45 sm:items-center sm:p-6"
-      onClick={() => setDirectory(false)}
-      role="presentation"
+    <Window
+      title="주민도감.exe"
+      label="주민 찾기"
+      onClose={() => setDirectory(false)}
+      className="h-[90dvh] max-w-3xl sm:h-[84dvh]"
     >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-label="주민 찾기"
-        className="panel flex h-[88dvh] w-full max-w-xl flex-col sm:h-[80dvh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="window-bar">SEARCH.EXE</div>
-        <header className="border-b-[3px] border-ink p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-display text-2xl">주민 찾기</h2>
-            <button type="button" className="btn px-3 py-1.5" onClick={() => setDirectory(false)} aria-label="닫기">
-              ✕
+      <div className="border-b-[3px] border-ink px-5 pb-4 pt-5 sm:px-6">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 className="shrink-0 whitespace-nowrap font-display text-2xl leading-none">주민 도감</h2>
+          <p className="hidden text-[13px] text-muted sm:block">이름을 입력하고 Enter 를 누르면 그 사람에게 가요</p>
+        </div>
+        <form
+          className="relative mt-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            // 이름을 치고 Enter 를 누르면 맨 앞 사람에게 바로 간다
+            if (results.length > 0) go(results[0].id);
+          }}
+        >
+          <Search size={18} strokeWidth={1.75} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
+          <input
+            autoFocus
+            type="search"
+            enterKeyHint="go"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="이름 입력"
+            aria-label="이름으로 찾기"
+            className="field h-11 w-full pl-10 pr-3"
+          />
+        </form>
+        <div className="segmented mt-3" role="group" aria-label="기수 태그로 거르기">
+          {FILTERS.map((f) => (
+            <button key={f.label} type="button" aria-pressed={tag === f.tag} onClick={() => setTag(f.tag)}>
+              {f.label}
+              <span className="tabular-nums text-muted">{countOf(f.tag)}</span>
             </button>
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              // 이름을 치고 Enter 를 누르면 맨 위 사람에게 바로 간다
-              if (results.length > 0) go(results[0].id);
-            }}
-          >
-            <input
-              autoFocus
-              type="search"
-              enterKeyHint="go"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="이름 입력 후 Enter → 그 사람에게 바로 이동"
-              aria-label="이름으로 찾기"
-              className="mt-3 w-full border-[3px] border-ink bg-white px-3 py-2 text-base outline-none focus:ring-4 focus:ring-brand/30"
-            />
-          </form>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            <button type="button" className="chip" data-active={tag === null} onClick={() => setTag(null)}>
-              전체 {sorted.length}
-            </button>
-            {TAGS.map((t) => (
-              <button key={t} type="button" className="chip" data-active={tag === t} onClick={() => setTag(t)}>
-                {t} 태그 {sorted.filter((p) => p.tags.includes(t)).length}
-              </button>
-            ))}
-          </div>
-        </header>
-
-        <ul className="min-h-0 flex-1 divide-y-2 divide-ink/10 overflow-y-auto overscroll-contain">
-          {results.map((p, i) => (
-            <li key={p.id} className="flex items-center gap-3 px-4 py-2.5" data-first={i === 0 && query.trim() !== ''}>
-              <i className="size-3 shrink-0 border-2 border-ink" style={{ backgroundColor: PART_COLOR[p.part] }} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-bold">{p.name}</p>
-                <p className="truncate text-sm text-ink/60">
-                  {roleLine(p)} · 태그 {p.tags.join(' ')}
-                </p>
-              </div>
-              <button type="button" className="btn px-2.5 py-1 text-sm" onClick={() => open(p.id)}>
-                글 보기
-              </button>
-              <button type="button" className="btn bg-lion px-2.5 py-1 text-sm" onClick={() => go(p.id)}>
-                바로 이동
-                {i === 0 && query.trim() !== '' && <kbd className="ml-1 hidden sm:inline">Enter</kbd>}
-              </button>
-            </li>
           ))}
-          {results.length === 0 && (
-            <li className="px-4 py-10 text-center text-ink/60">
-              그런 이름의 주민은 없어요.
-              <br />
-              이 마을에는 11기·12기 사람만 살아요.
+        </div>
+      </div>
+
+      <ul className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-3 overflow-y-auto overscroll-contain bg-raised p-4 sm:grid-cols-3 sm:p-6 md:grid-cols-4">
+        {results.map((p, i) => {
+          const first = typing && i === 0;
+          return (
+            <li key={p.id} className="card" data-first={first || undefined}>
+              <button type="button" className="card-main" onClick={() => go(p.id)} aria-label={`${p.name}에게 이동`}>
+                <Portrait color={PART_COLOR[p.part]} size="sm" />
+                <span className="mt-3 block truncate font-display text-lg leading-tight">{p.name}</span>
+                <span className="mt-1 block truncate text-[13px] text-secondary">
+                  {[`${homeOf(p)}기`, PART_LABEL[p.part]].filter(Boolean).join(' ')}
+                </span>
+                {first && (
+                  <span className="mt-2 flex items-center gap-1 text-xs text-brand">
+                    <CornerDownLeft size={14} strokeWidth={1.75} aria-hidden />
+                    Enter 로 이동
+                  </span>
+                )}
+              </button>
+              <button type="button" className="card-read" onClick={() => open(p.id)} aria-label={`${p.name} 글 보기`} title="글 보기">
+                <BookOpen size={16} strokeWidth={1.75} aria-hidden />
+              </button>
             </li>
-          )}
-        </ul>
-      </section>
-    </div>
+          );
+        })}
+        {results.length === 0 && (
+          <li className="col-span-full py-12 text-center text-secondary">
+            그런 이름의 주민은 없어요
+            <br />
+            <span className="text-[13px] text-muted">이 마을에는 11기·12기 사람만 살아요</span>
+          </li>
+        )}
+      </ul>
+    </Window>
   );
 }

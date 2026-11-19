@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Claude 스킬·훅 (외부에서 가져온 스크립트 포함)
+    ".claude/**",
   ]),
 ]);
 

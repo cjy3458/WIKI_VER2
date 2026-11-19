@@ -7,7 +7,7 @@ import './globals.css';
 // 한글 폰트는 글자 범위별 조각이 많아 preload 하지 않는다
 // 구버전 위키의 픽셀 글꼴(둥근모, OFL). 저장소에 넣어 직접 서빙한다
 const pixel = localFont({ src: './fonts/NeoDunggeunmoPro-Regular.woff2', variable: '--font-pixel', display: 'swap' });
-const noto = Noto_Sans_KR({ weight: ['400', '700'], variable: '--font-noto', preload: false, display: 'swap' });
+const noto = Noto_Sans_KR({ weight: ['400', '500'], variable: '--font-noto', preload: false, display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'CAU LIKE_LION WIKI — 픽셀 마을',
