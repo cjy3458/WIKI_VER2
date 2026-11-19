@@ -46,6 +46,7 @@ src/lib/                    스토어, 마을 배치 계산, 유틸
 src/lib/net.ts              다른 접속자와의 P2P 통신 (통신 코드는 여기에만)
 docs/design.md              설계 문서
 docs/world-design.md        공간 컨셉·건축물 배치·인터랙션 시나리오
+.claude/skills/unslop/      UI 디자인 다듬기 스킬 (heydamir/unslop, CC BY 4.0, 원작자 표기 유지)
 docs/multiplayer.md         함께 접속(메타버스) 설계
 ```
 
