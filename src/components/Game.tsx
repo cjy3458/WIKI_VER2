@@ -1,7 +1,6 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
 import { useEffect, useSyncExternalStore } from 'react';
 import { CHAT_INPUT_ID } from '@/components/ui/ChatBox';
 import { Directory } from '@/components/ui/Directory';
@@ -134,8 +133,6 @@ export function Game() {
         <IntroScreen canWalk={webgl} />
       ) : (
         <>
-          {/* 구버전 창 그림에 떠 있던 그 해. 창 속 세계의 하늘에 그대로 떠 있다 */}
-          <Image src="/img/sun.png" alt="" width={158} height={154} priority className="sky-sun pixelated" />
           <div className="arrive-sky pointer-events-none fixed inset-0 z-30" aria-hidden />
           <Hud />
         </>

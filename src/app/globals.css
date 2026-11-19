@@ -95,26 +95,6 @@ body {
   }
 }
 
-/* 하늘의 해: 구버전 창 그림처럼 오른쪽 위. HUD(미니맵·버튼)보다 뒤, 3D 보다 앞 */
-.sky-sun {
-  position: fixed;
-  top: clamp(0.6rem, 3vh, 1.6rem);
-  right: clamp(9.5rem, 21vw, 19rem);
-  z-index: 10;
-  width: clamp(4.2rem, 8.5vw, 7.2rem);
-  height: auto;
-  pointer-events: none;
-  animation: sun-bob 2.4s steps(2, jump-none) infinite;
-}
-@keyframes sun-bob {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-6px);
-  }
-}
-
 .click-badge {
   border: 3px solid #000;
   background: var(--color-lion);
@@ -156,7 +136,6 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .click-badge,
-  .sky-sun,
   .animate-float {
     animation: none;
   }

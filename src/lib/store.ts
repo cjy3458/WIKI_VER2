@@ -76,7 +76,7 @@ export const controls = {
 
 /** snap: 다음 프레임에 카메라를 부드럽게 따라가지 않고 바로 옮긴다 (순간이동 직후) */
 /** dive: 입장 연출이 끝나기까지 남은 시간(초). 남아 있는 동안 카메라가 멀리서 섬으로 내려온다 */
-export const cameraState = { yaw: 0, pitch: 0.4, distance: 21, snap: true, dive: 0 };
+export const cameraState = { yaw: 0, pitch: 0.32, distance: 21, snap: true, dive: 0 };
 export const DIVE_SECONDS = 2.2;
 
 export function resetControls() {

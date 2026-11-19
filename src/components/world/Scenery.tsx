@@ -15,10 +15,6 @@ const dummy = new THREE.Object3D();
 const color = new THREE.Color();
 const BLUE = '#4c4df5';
 const SIGN = { width: 512, height: 116, fontSize: 54 };
-/** 시야를 가리는 나무·집이 낮아졌을 때의 높이 비율 (밑동만 남는다) */
-const CUT_HEIGHT = 0.13;
-/** 카메라에서 이 거리 안에 있는 나무·집도 낮춘다 (화면 가장자리를 크게 덮는 것들) */
-const NEAR_CAMERA = 11;
 
 // ── 픽셀 텍스처 ─────────────────────────────────
 
@@ -60,7 +56,6 @@ function Instances<T>({
   tint,
   vertexColors = true,
   castShadow = true,
-  cutaway,
 }: {
   geometry: THREE.BufferGeometry;
   items: T[];
@@ -68,12 +63,8 @@ function Instances<T>({
   tint?: (item: T) => string;
   vertexColors?: boolean;
   castShadow?: boolean;
-  /** 주면, 카메라와 내 캐릭터 사이를 가릴 때 낮아진다. 물체의 자리·반경·높이 */
-  cutaway?: (item: T) => { x: number; z: number; r: number; h: number };
 }) {
   const ref = useRef<THREE.InstancedMesh>(null);
-  const heights = useRef<Float32Array | null>(null);
-  const footprints = useMemo(() => (cutaway ? items.map(cutaway) : null), [items, cutaway]);
   const material = useMemo(
     () => new THREE.MeshStandardMaterial({ vertexColors, roughness: 1, flatShading: true }),
     [vertexColors],
@@ -98,46 +89,6 @@ function Instances<T>({
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.computeBoundingSphere();
   }, [items, place, tint]);
-
-  useFrame(({ camera }, delta) => {
-    const mesh = ref.current;
-    if (!mesh || !footprints) return;
-    if (!heights.current || heights.current.length !== items.length) heights.current = new Float32Array(items.length).fill(1);
-    const current = heights.current;
-    // 카메라 → 내 캐릭터로 가는 시선
-    const cx = camera.position.x;
-    const cz = camera.position.z;
-    const sx = player.x - cx;
-    const sz = player.z - cz;
-    const length2 = sx * sx + sz * sz || 1;
-    const ease = 1 - Math.exp(-12 * delta);
-    let changed = false;
-    for (let i = 0; i < footprints.length; i++) {
-      const f = footprints[i];
-      const t = ((f.x - cx) * sx + (f.z - cz) * sz) / length2;
-      let blocking = false;
-      if (t > -0.05 && t < 1) {
-        const off = Math.hypot(f.x - (cx + sx * t), f.z - (cz + sz * t));
-        // 그 지점에서 시선의 높이. 시선이 물체 위로 지나가면 가리지 않는다
-        const sightY = camera.position.y + (1.4 - camera.position.y) * t;
-        blocking = off < f.r && f.h > sightY - 0.6;
-      }
-      // 카메라 바로 앞에 있는 것은 시선 한가운데가 아니어도 화면을 크게 덮는다
-      if (!blocking && Math.hypot(f.x - cx, f.z - cz) < NEAR_CAMERA + f.r) blocking = true;
-      const target = blocking ? CUT_HEIGHT : 1;
-      if (Math.abs(current[i] - target) < 0.003) continue;
-      current[i] += (target - current[i]) * ease;
-      dummy.position.set(0, 0, 0);
-      dummy.rotation.set(0, 0, 0);
-      dummy.scale.set(1, 1, 1);
-      place(items[i], dummy);
-      dummy.scale.y *= current[i];
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      changed = true;
-    }
-    if (changed) mesh.instanceMatrix.needsUpdate = true;
-  });
 
   return <instancedMesh ref={ref} args={[geometry, material, items.length]} castShadow={castShadow} receiveShadow />;
 }
@@ -184,6 +135,63 @@ const placeTree = (t: Tree, o: THREE.Object3D) => {
   o.scale.setScalar(t.scale);
 };
 
+/**
+ * 구버전 창 그림의 해: 빨간 8각 별 위에 노란 원, 왼쪽 위 하이라이트, 눈과 부리.
+ * 한 칸이 상자 하나다. 0 이 가운데인 칸 좌표 → 색 (없으면 빈칸)
+ */
+const SUN_HALF = 10;
+function sunCell(dx: number, dy: number) {
+  const d = Math.hypot(dx, dy);
+  if (d <= 6.4) {
+    if ((dx === -2 || dx === 2) && dy === -1) return '#000000'; // 눈
+    if (dx === 0 && dy === 1) return '#c7584f'; // 부리
+    if (d > 4.6 && dx < -0.5 && dy < 0.5) return '#fff7be'; // 하이라이트
+    if (d > 5.5) return '#e8a400'; // 원 테두리
+    return '#ffd91a';
+  }
+  // 정사각형 + 45도 돌린 정사각형 = 8각 별
+  if ((Math.abs(dx) <= 7 && Math.abs(dy) <= 7) || Math.abs(dx) + Math.abs(dy) <= 10) return '#e0636b';
+  return null;
+}
+
+function createSunGeometry() {
+  const parts: THREE.BufferGeometry[] = [];
+  for (let dy = -SUN_HALF; dy <= SUN_HALF; dy++) {
+    for (let dx = -SUN_HALF; dx <= SUN_HALF; dx++) {
+      const c = sunCell(dx, dy);
+      // 앞쪽(+z)이 카메라를 본다. 노란 원은 별보다 한 칸 앞으로 튀어나오게
+      if (c) parts.push(box(1, 1, c === '#e0636b' ? 1 : 2, dx, -dy, c === '#e0636b' ? 0 : 0.5, c));
+    }
+  }
+  return mergeAll(parts);
+}
+
+/** 하늘 멀리 떠 있는 해. 카메라를 따라 움직여 언제나 같은 방향 하늘에 보인다 (구름처럼 세계 안에 있다) */
+const SUN_DISTANCE = 320;
+const SUN_SCALE = 1.55;
+/** 북쪽(입장했을 때 정면)에서 오른쪽으로 22도, 수평선보다 2도 위 */
+const SUN_DIR = new THREE.Vector3(Math.sin(0.38) * Math.cos(0.035), Math.sin(0.035), -Math.cos(0.38) * Math.cos(0.035));
+function Sun() {
+  const group = useRef<THREE.Group>(null);
+  const geometry = useMemo(() => createSunGeometry(), []);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  useFrame(({ camera, clock }) => {
+    const g = group.current;
+    if (!g) return;
+    g.position.copy(camera.position).addScaledVector(SUN_DIR, SUN_DISTANCE);
+    // 구버전 그림처럼 뚝뚝 끊기며 살짝 들썩인다
+    g.position.y += (Math.floor(clock.elapsedTime * 1.2) % 2) * 1.2;
+    g.lookAt(camera.position);
+  });
+  return (
+    <group ref={group} scale={SUN_SCALE}>
+      <mesh geometry={geometry}>
+        <meshBasicMaterial vertexColors toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
 /** 블록 구름: 구름 하나가 상자 세 개 */
 const CLOUD_BLOCKS = Array.from({ length: 14 }, (_, i) => {
   const a = i * 2.399963; // 황금각으로 고르게
@@ -198,9 +206,6 @@ const CLOUD_BLOCKS = Array.from({ length: 14 }, (_, i) => {
     { x: x - s * 1.5, y: y + s * 0.5, z: z + s * 0.5, sx: s * 1.5, sy: s, sz: s },
   ];
 }).flat();
-/** 시야를 가릴 수 있는 범위: 자리, 반경, 높이 */
-const houseFootprint = (h: House) => ({ x: h.x, z: h.z, r: 3.9 * h.scale, h: 5 * h.scale });
-const treeFootprint = (t: Tree) => ({ x: t.x, z: t.z, r: 2.4 * t.scale, h: 5.1 * t.scale });
 const placeCloud = (c: (typeof CLOUD_BLOCKS)[number], o: THREE.Object3D) => {
   o.position.set(c.x, c.y, c.z);
   o.scale.set(c.sx, c.sy, c.sz);
@@ -212,9 +217,9 @@ function Blocks() {
   const cloud = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
   return (
     <>
-      <Instances geometry={house.walls} items={village.houses} place={placeHouse} cutaway={houseFootprint} />
-      <Instances geometry={house.roof} items={village.houses} place={placeHouse} tint={tintHouse} vertexColors={false} cutaway={houseFootprint} />
-      <Instances geometry={tree} items={village.trees} place={placeTree} cutaway={treeFootprint} />
+      <Instances geometry={house.walls} items={village.houses} place={placeHouse} />
+      <Instances geometry={house.roof} items={village.houses} place={placeHouse} tint={tintHouse} vertexColors={false} />
+      <Instances geometry={tree} items={village.trees} place={placeTree} />
       <Instances geometry={cloud} items={CLOUD_BLOCKS} place={placeCloud} vertexColors={false} castShadow={false} />
     </>
   );
@@ -577,6 +582,7 @@ export function Scenery() {
       <Lounge />
       <Pond texture={textures.water} />
       <Blocks />
+      <Sun />
 
     </>
   );

@@ -132,9 +132,10 @@ function build() {
 
   // 3) 집: 네 방향 중 하나를 본다
   const houses: House[] = [];
-  for (let attempt = 0; attempt < 4000 && houses.length < 26; attempt++) {
+  for (let attempt = 0; attempt < 4000 && houses.length < 12; attempt++) {
     const [x, z] = pick(WORLD_HALF - 8);
-    if (!free(x, z, 5) || onRoad(x, z, 4.5) || !far(npcs, x, z, 6.5) || !far(houses, x, z, 13)) continue;
+    // 광장 둘레는 비워 둔다 (입장하자마자 시야를 가리지 않게)
+    if (!free(x, z, 9) || onRoad(x, z, 4.5) || !far(npcs, x, z, 6.5) || !far(houses, x, z, 18)) continue;
     houses.push({
       x: Math.round(x),
       z: Math.round(z),
@@ -146,9 +147,9 @@ function build() {
 
   // 4) 나무
   const trees: Tree[] = [];
-  for (let attempt = 0; attempt < 8000 && trees.length < 170; attempt++) {
+  for (let attempt = 0; attempt < 8000 && trees.length < 64; attempt++) {
     const [x, z] = pick(WORLD_HALF - 3);
-    if (!free(x, z, 2) || onRoad(x, z, 1.8)) continue;
+    if (!free(x, z, 2) || onRoad(x, z, 1.8) || Math.max(Math.abs(x), Math.abs(z)) < PLAZA_HALF + 9) continue;
     if (!far(npcs, x, z, 3.4) || !far(houses, x, z, 5.2) || !far(trees, x, z, 5.5)) continue;
     trees.push({ x: Math.round(x * 2) / 2, z: Math.round(z * 2) / 2, scale: 0.85 + rand() * 0.6 });
   }
