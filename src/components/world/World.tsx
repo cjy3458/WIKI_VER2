@@ -7,6 +7,7 @@ import { Npcs } from '@/components/world/Npcs';
 import { Player } from '@/components/world/Player';
 import { Scenery } from '@/components/world/Scenery';
 import { Visitors } from '@/components/world/Visitors';
+import { XrayRenderer } from '@/components/world/XrayRenderer';
 import { useGame } from '@/lib/store';
 
 /** 픽셀 섬. 캔버스는 투명하고 뒤의 파란 모눈이 하늘이 된다. next/dynamic(ssr: false) 로만 불러온다 */
@@ -30,6 +31,7 @@ export default function World() {
       <Player />
       <Visitors />
       <Markers />
+      <XrayRenderer />
     </Canvas>
   );
 }

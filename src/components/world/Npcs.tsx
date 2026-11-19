@@ -3,8 +3,8 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { RENDER_ORDER, createGhostMaterial, createLabelTexture, dampAngle, displayFontFamily } from '@/components/world/geo';
-import { createGhostGeometry, createNpcGeometries } from '@/components/world/lionGeometry';
+import { LAYER, createLabelTexture, dampAngle, displayFontFamily } from '@/components/world/geo';
+import { createNpcGeometries } from '@/components/world/lionGeometry';
 import { PART_COLOR } from '@/lib/people';
 import { isBlocked, player, useGame } from '@/lib/store';
 import { village } from '@/lib/village';
@@ -21,7 +21,6 @@ export function Npcs() {
   const npcs = village.npcs;
   const bodyRef = useRef<THREE.InstancedMesh>(null);
   const shirtRef = useRef<THREE.InstancedMesh>(null);
-  const ghostRef = useRef<THREE.InstancedMesh>(null);
   const rotations = useRef<Float32Array | null>(null);
 
   const assets = useMemo(() => {
@@ -30,8 +29,6 @@ export function Npcs() {
       ...geometries,
       bodyMaterial: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true }),
       shirtMaterial: new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true }),
-      ghost: createGhostGeometry(),
-      ghostMaterial: createGhostMaterial(),
     };
   }, []);
 
@@ -41,11 +38,15 @@ export function Npcs() {
       assets.shirt.dispose();
       assets.bodyMaterial.dispose();
       assets.shirtMaterial.dispose();
-      assets.ghost.dispose();
-      assets.ghostMaterial.dispose();
     },
     [assets],
   );
+
+  // 사자 레이어: 나무·집 뒤에 있어도 실제 모습이 비쳐 보인다
+  useLayoutEffect(() => {
+    bodyRef.current?.layers.enable(LAYER.lion);
+    shirtRef.current?.layers.enable(LAYER.lion);
+  }, []);
 
   useLayoutEffect(() => {
     const shirt = shirtRef.current;
@@ -83,35 +84,24 @@ export function Npcs() {
       dummy.updateMatrix();
       body.setMatrixAt(i, dummy.matrix);
       shirt.setMatrixAt(i, dummy.matrix);
-      ghostRef.current?.setMatrixAt(i, dummy.matrix);
     }
     body.instanceMatrix.needsUpdate = true;
     shirt.instanceMatrix.needsUpdate = true;
-    if (ghostRef.current) ghostRef.current.instanceMatrix.needsUpdate = true;
 
     useGame.getState().setNearby(isBlocked() ? null : nearest);
   });
 
   return (
     <>
-      {/* 나무·집 뒤에 있어도 비쳐 보이는 실루엣 */}
-      <instancedMesh
-        ref={ghostRef}
-        args={[assets.ghost, assets.ghostMaterial, npcs.length]}
-        renderOrder={RENDER_ORDER.ghost}
-        frustumCulled={false}
-      />
       <instancedMesh
         ref={bodyRef}
         args={[assets.body, assets.bodyMaterial, npcs.length]}
-        renderOrder={RENDER_ORDER.lion}
         castShadow
         frustumCulled={false}
       />
       <instancedMesh
         ref={shirtRef}
         args={[assets.shirt, assets.shirtMaterial, npcs.length]}
-        renderOrder={RENDER_ORDER.lion}
         castShadow
         frustumCulled={false}
       />
@@ -158,7 +148,7 @@ function NameTags() {
           // 이름표는 무엇에도 가려지지 않는다
           const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, depthTest: false });
           const sprite = new THREE.Sprite(material);
-          sprite.renderOrder = RENDER_ORDER.tag;
+          sprite.layers.set(LAYER.tag);
           sprite.position.set(npc.x, 2.95, npc.z);
           sprite.scale.set(3, 0.9, 1);
           sprite.visible = false;

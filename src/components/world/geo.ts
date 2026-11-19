@@ -25,21 +25,17 @@ export function mergeAll(parts: THREE.BufferGeometry[]) {
 }
 
 /**
- * 그리는 순서. 풍경(0) → 사자 실루엣(1) → 사자(2) → 이름표(5).
- * 실루엣은 "풍경보다 뒤에 있는 부분"만 그리므로, 사자가 나무·집에 가려져도 그 뒤로 비쳐 보인다.
+ * 렌더링 레이어 (XrayRenderer 가 레이어별로 나눠 그린다).
+ * - 0: 모든 것
+ * - lion: 사자 몸. 0 과 함께 켠다. 나무·집 뒤에 있어도 실제 모습이 비쳐 보이게 한 번 더 그려진다
+ * - tag: 이름표·말풍선. 이것만 켠다(0 은 끈다). 맨 마지막에 그려져 항상 위에 보인다
  */
-export const RENDER_ORDER = { ghost: 1, lion: 2, tag: 5 };
+export const LAYER = { lion: 1, tag: 2 };
 
-/**
- * 가려진 사자를 비춰 보이는 재질: 무언가의 뒤에 있는 픽셀에만 단색 그림자로 그린다.
- * 깊이를 기록하지 않으므로 평소엔 머리에 가려지는 눈·부리 블록의 안쪽 면까지 그려진다.
- * 그래서 원래 색(vertexColors)을 쓰면 뒤돌아 있어도 눈이 비쳐 보인다 → 반드시 한 가지 색만 쓴다.
- */
-export function createGhostMaterial() {
-  return new THREE.MeshBasicMaterial({
-    color: '#7f86d9',
-    depthFunc: THREE.GreaterDepth,
-    depthWrite: false,
+/** 이 물체 아래의 모든 mesh 를 사자 레이어에도 올린다 */
+export function markLion(root: THREE.Object3D | null) {
+  root?.traverse((o) => {
+    if ((o as THREE.Mesh).isMesh) o.layers.enable(LAYER.lion);
   });
 }
 
